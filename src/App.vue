@@ -1,0 +1,107 @@
+<script setup lang="ts">
+import { onMounted, ref } from "vue";
+import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
+import IconOpen from "./assets/folder-open.svg?component";
+import { SpeData } from "./scripts/DataViewer";
+import ARSpectrumViewer from "./ARSpectrumViewer.vue";
+import { path } from "@tauri-apps/api";
+import SpectrumViewer from "./SpectrumViewer.vue";
+import { getMatches } from "@tauri-apps/plugin-cli";
+import { listen } from "@tauri-apps/api/event";
+
+const workingPath = ref("");
+
+const speData = ref<SpeData>();
+
+const fileName = ref('');
+
+const sliceIndex = ref(0);
+
+const hintText = ref('');
+// const hint = useTemplateRef('hint');
+function showHint(text: string) {
+  hintText.value = text;
+  setTimeout(() => hintText.value = '', 3000);
+}
+
+async function openFromPath(filePath: string) {
+  let baseName = await path.basename(filePath);
+  fileName.value = baseName.substring(0, baseName.length - 4);
+
+  workingPath.value = filePath;
+  invoke("open_spe", { path: filePath })
+    .then((str) => {
+      speData.value = JSON.parse(str as string) as SpeData;
+    });
+}
+
+async function openDataFile() {
+  let filePath = await open({
+    multiple: false,
+    filters: [{
+      name: 'spe文件',
+      extensions: ['spe']
+    }]
+  });
+
+  if(filePath) {
+    openFromPath(filePath);
+  }
+}
+
+async function dropToOpen(e: DragEvent) {
+  console.log('drop');
+  if(e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+    let filePath  = e.dataTransfer.files[0];
+    console.log(filePath);
+  }
+}
+
+onMounted(async () => {
+  let source = (await getMatches()).args.source.value;
+  if(typeof source == 'string') {
+    if(source.substring(source.length - 4) == '.spe') {
+      openFromPath(source);
+    }
+  }
+  listen<{[key: string]: any}>('tauri://drag-drop', event => {
+    let filePath: string = event.payload.paths[0];
+    if(filePath.substring(filePath.length - 4) == '.spe') {
+      openFromPath(filePath);
+    }
+});
+})
+</script>
+
+<template>
+  <nav>
+    <button @click="openDataFile">
+      <IconOpen/>打开文件
+    </button>
+    <p>{{ workingPath }}</p>
+  </nav>
+  <Teleport to="body">
+    <Transition name="hint">
+      <p ref="hint" v-if="hintText != ''" class="hint">{{ hintText }}</p>
+    </Transition>
+  </Teleport>
+  <div id="content" @dragover.prevent="" @drop="dropToOpen">
+    <ARSpectrumViewer v-if="speData" :data="speData" :name="fileName" @copy-to-clipboard="showHint" />
+    <SpectrumViewer v-if="speData" :data="speData" :name="fileName" v-model="sliceIndex"
+      @copy-to-clipboard="showHint" />
+  </div>
+</template>
+
+<style>
+.hint-enter-active,
+.hint-leave-active {
+  transition: all 0.3s ease;
+}
+
+.hint-enter-from,
+.hint-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+</style>

@@ -1,0 +1,105 @@
+body {
+    background-color: rgb(250, 250, 250);
+    display: flex;
+    flex-direction: column;
+    margin: 0px;
+    color: rgb(32, 32, 32);
+    justify-items: center;
+}
+
+nav {
+    background-color: rgb(223, 223, 223);
+    display: flex;
+    gap: 2mm;
+    padding: 0px 2mm;
+    height: 1cm;
+    align-items: center;
+}
+
+p, label {
+    margin: 0px;
+    font-size: 3.6mm;
+    text-wrap: nowrap;
+}
+
+label {
+    user-select: none;
+}
+
+input[type="number"],
+input[type="text"] {
+    background-color: rgb(240, 240, 240);
+    font-size: 3.6mm;
+    padding: 1mm;
+    color: rgb(64, 64, 64);
+    border-radius: 1mm;
+    border-width: 0px;
+    outline-width: 0px;
+    max-width: 1cm;
+    height: 6mm;
+}
+
+input[type="number"]:focus,
+input[type="text"]:focus {
+    background-color: white;
+    color: black;
+    filter: drop-shadow(0px 0px 8px rgba(0, 0, 0, 0.1))
+}
+
+.hint {
+    background-color: rgba(59, 209, 39, 0.5);
+    color: white;
+    position: relative;
+    padding: 1mm 2mm;
+    border-radius: 1mm;
+    top: 2mm;
+    /* left: 50%; */
+    margin: 0px auto;
+    justify-self: center;
+    z-index: 2;
+}
+
+button {
+    padding: 1mm;
+    display: flex;
+    background-color: transparent;
+    border-width: 0px;
+    border-radius: 1mm;
+    height: 7mm;
+    gap: 1mm;
+    justify-items: center;
+    align-items: center;
+    transition: 0.3s;
+    user-select: none;
+}
+
+button > svg {
+    width: 5mm;
+    height: 5mm;
+}
+
+button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+button:active {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+#content {
+    position: absolute;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    padding: 3mm;
+    gap: 3mm;
+    /* display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: 100%; */
+    /* display: flex; */
+    bottom: 0px;
+    top: 1cm;
+    right: 0px;
+    left: 0px;
+    transition: 0.5s;
+    overflow: auto;
+}

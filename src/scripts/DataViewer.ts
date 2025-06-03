@@ -1,0 +1,303 @@
+import { ECharts } from 'echarts';
+
+class SpeData {
+    min_max: number[][];
+    frame: number[][];
+    width: number;
+    height: number;
+    wavelength: number[];
+    detector_angle_cal: number;
+    focal_length_cal: number;
+    inclusion_angle_cal: number;
+    detector_angle_exp: number;
+    focal_length_exp: number;
+    inclusion_angle_exp: number;
+    constructor(
+        min_max: number[][],
+        frame: number[][],
+        width: number,
+        height: number,
+        wavelength: number[],
+        detector_angle_cal: number,
+        focal_length_cal: number,
+        inclusion_angle_cal: number,
+        detector_angle_exp: number,
+        focal_length_exp: number,
+        inclusion_angle_exp: number
+    ) {
+        this.min_max = min_max;
+        this.frame = frame;
+        this.width = width;
+        this.height = height;
+        this.wavelength = wavelength;
+        this.detector_angle_cal = detector_angle_cal;
+        this.focal_length_cal = focal_length_cal;
+        this.inclusion_angle_cal = inclusion_angle_cal;
+        this.detector_angle_exp = detector_angle_exp;
+        this.focal_length_exp = focal_length_exp;
+        this.inclusion_angle_exp = inclusion_angle_exp;
+
+    }
+
+}
+
+function downSampling(speData: SpeData, stride: number): SpeData {
+    if (stride <= 1) {
+        return speData;
+    }
+    let snapshot = { ...speData };
+    snapshot.width = Math.ceil(speData.width / stride);
+    snapshot.height = Math.ceil(speData.height / stride);
+    snapshot.wavelength = [];
+    for (var i = 0; i < speData.width; i += stride) {
+        snapshot.wavelength.push(speData.wavelength[i]);
+    }
+    snapshot.frame = speData.frame.map(oneFrame => {
+        let newFrame = [];
+        for (var i = 0; i < speData.height; i += stride) {
+            for (var j = 0; j < speData.width; j += stride) {
+                newFrame.push(oneFrame[i * speData.width + j]);
+            }
+        }
+        return newFrame;
+    })
+    return snapshot;
+}
+
+async function drawARSpec(chart: ECharts, speData: SpeData, name: string, xMin: number, xMax: number) {
+    let data: number[][] = [];
+    let xLength = speData.height;
+    let yLength = speData.width;
+    let xData = Array.from({ length: xLength }, (_, i) => i);
+    let yData = speData.wavelength;
+    let zMin = speData.min_max[0][0];
+    let zMax = speData.min_max[0][1];
+
+    for (var j = 0; j < yLength; j++) {
+        for (var i = 0; i < xLength; i++) {
+            data.push([i, j, speData.frame[0][i * yLength + j]])
+        }
+    }
+    chart.setOption({
+        title: {
+            text: name, left: 'center', top: 7,
+            textStyle: { color: "#000", fontSize: 16, fontFamily: 'Arial' }
+        },
+        tooltip: {
+            textStyle: { fontSize: 14 }, padding: [0, 4],
+            formatter: (params: { [key: string]: any }) => {
+                let num = params.value[2];
+                return `${params.seriesName}<br/>${num}`;
+            },
+            // axisPointer: {
+            //     axis: 'x'
+            // },
+            // trigger: 'axis', triggerOn: 'click', showContent: false
+        },
+        grid: {
+            // show: true,
+            // backgroundColor: 'rgb(255, 255, 255)',
+            top: 35, bottom: 49, right: 98, left: 70
+        },
+        xAxis: [
+            {
+                type: 'category',
+                position: 'top',
+                data: xData,
+                axisTick: {
+                    show: false
+                },
+                axisLine: {
+                    show: false
+                },
+                axisLabel: {
+                    show: false
+                },
+            },
+            {
+                type: 'value',
+                position: 'bottom',
+                min: xMin,
+                max: xMax,
+                nameLocation: 'center', nameGap: 28,
+                name: "Index", nameTextStyle: {
+                    color: "#000", fontFamily: 'Times New Roman', fontSize: 16
+                },
+                axisTick: {
+                    show: true, color: "#000"
+                },
+                axisLine: {
+                    show: false
+                },
+                axisLabel: {
+                    color: "#000", fontFamily: 'Times New Roman', fontSize: 14,
+                    formatter: (value: number) => {
+                        return value.toFixed(0);
+                    }
+                },
+            },
+        ],
+        yAxis: [
+            {
+                type: 'category',
+                position: 'right',
+                data: yData,
+                axisTick: {
+                    show: false
+                },
+                axisLine: {
+                    show: false
+                },
+                axisLabel: {
+                    show: false
+                },
+            },
+            {
+                type: 'value',
+                position: 'left',
+                min: yData[0],
+                max: yData[yLength - 1],
+                nameLocation: 'center', nameGap: 42,
+                name: "Wavelength (nm)", nameTextStyle: {
+                    color: "#000", fontFamily: 'Times New Roman', fontSize: 16
+                },
+                axisTick: {
+                    show: true, color: "#000"
+                },
+                axisLabel: {
+                    color: "#000", fontFamily: 'Times New Roman', fontSize: 14,
+                    formatter: (value: number) => {
+                        return value.toFixed(0);
+                    }
+                },
+            },
+        ],
+        visualMap: {
+            min: zMin,
+            max: zMax,
+            calculable: true,
+            realtime: false,
+            textStyle: {
+                color: "#000", fontFamily: 'Times New Roman', fontSize: 14
+            },
+            handleStyle: {
+                opacity: 0
+            },
+            inRange: {
+                color: [
+                    // plasma
+                    '#0d0887',
+                    '#5301a8',
+                    '#9E0698',
+                    '#DF3753',
+                    '#FD9927',
+                    '#F0F921'
+
+                    // viridis
+                    // '#440154',
+                    // '#414487',
+                    // '#2A788E',
+                    // '#22A884',
+                    // '#7AD151',
+                    // '#FDE725'
+                ]
+            },
+            itemHeight: 256,
+            right: 7, top: 'center',
+            align: 'left',
+            formatter: (value: string) => {
+                return parseFloat(value).toExponential(1)
+            }
+        },
+        series: [
+            {
+                name: "counts",
+                type: 'heatmap',
+                data: data,
+                emphasis: {
+                    itemStyle: {
+                        borderColor: '#0f0',
+                        borderWidth: 1
+                    }
+                },
+                progressive: 1000,
+                animation: false
+            }
+        ]
+    })
+}
+async function drawSpec(chart: ECharts, speData: SpeData, index: number, name: string) {
+    let data = speData.wavelength.map((lambda, j) => {
+        return [lambda, speData.frame[0][index * speData.width + j]]
+    });
+    chart.setOption({
+        animation: false,
+        tooltip: {
+            trigger: 'item', padding: [0, 4],
+            formatter: (params: { [key: string]: any }) => {
+                return `${(params.value[0] as number).toFixed(2)} nm<br/>counts: ${params.value[1]}`;
+            },
+            textStyle: { fontSize: 14 }
+        },
+        legend: {
+            top: 7, right: 'center',
+            textStyle: {
+                color: "#000", fontFamily: 'Arial', fontSize: 16
+            },
+        },
+        dataZoom: [
+            { type: 'inside', yAxisIndex: 0 },
+            { type: 'inside', xAxisIndex: 0 }
+        ],
+        grid: {
+            show: true,
+            borderColor: "#000",
+            backgroundColor: '#fff',
+            top: 35, bottom: 49, right: 14, left: 70
+        },
+        xAxis: {
+            type: 'value', nameLocation: 'center', nameGap: 28,
+            name: "Wavelength (nm)", nameTextStyle: {
+                color: "#000", fontFamily: 'Times New Roman', fontSize: 16
+            },
+            min: speData.wavelength[0],
+            max: speData.wavelength[speData.width - 1],
+            axisLabel: {
+                color: "#000", fontFamily: 'Times New Roman', fontSize: 14,
+            },
+            splitLine: { show: false },
+        },
+        yAxis: {
+            type: 'value', nameLocation: 'center', nameGap: 42,
+            name: "counts", nameTextStyle: {
+                color: "#000", fontFamily: 'Times New Roman', fontSize: 16
+            },
+            axisLabel: {
+                color: "#000", fontFamily: 'Times New Roman', fontSize: 14,
+                formatter: (value: number) => {
+                    return value.toExponential();
+                }
+            },
+            splitLine: { show: false },
+        },
+        series: {
+            name: name, type: 'line', data: data,
+            symbol: 'none', lineStyle: { width: 3 }
+        }
+    })
+
+}
+
+function saveImage(chart: echarts.ECharts, name: string) {
+    let url1 = chart.getDataURL({
+        type: 'png',
+        pixelRatio: 3,
+        backgroundColor: '#fff'
+    });
+    let link1 = document.createElement('a');
+    link1.href = url1;
+    link1.download = name;
+    link1.click();
+}
+
+export { SpeData, downSampling, drawARSpec, drawSpec, saveImage }
