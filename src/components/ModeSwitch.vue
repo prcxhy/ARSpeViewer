@@ -29,16 +29,16 @@ const state = defineModel<boolean>()
 }
 
 .switch-mode:hover {
-    background-color: rgb(192, 192, 192);
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 .mode-active {
     color: rgb(64, 64, 64);
-    background-color: rgb(250, 250, 250);
+    background-color: var(--color-bg-9);
 }
 
 .mode-active:hover {
-    background-color: white;
+    background-color: var(--color-bg-10);
     filter: drop-shadow(0px 0px 8px rgba(0, 0, 0, 0.1))
 }
 
@@ -51,7 +51,7 @@ const state = defineModel<boolean>()
 }
 
 .mode-switch-slot {
-    background-color: rgb(204, 204, 204);
+    background-color: var(--color-bg-7);
     display: flex;
     padding: 1mm;
     border-radius: 2mm;
