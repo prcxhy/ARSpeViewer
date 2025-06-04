@@ -1,5 +1,10 @@
 import { ECharts } from 'echarts';
 
+const H = 6.62607015e-34;
+const C0 = 299792458;
+const e = 1.602176634e-19;
+const CONST_1240 = H * C0 * 1e9 / e;
+
 class SpeData {
     min_max: number[][];
     frame: number[][];
@@ -53,7 +58,7 @@ function downSampling(speData: SpeData, stride: number): SpeData {
         snapshot.wavelength.push(speData.wavelength[i]);
     }
     snapshot.frame = speData.frame.map(oneFrame => {
-        let newFrame = [];
+        let newFrame: number[] = [];
         for (var i = 0; i < speData.height; i += stride) {
             for (var j = 0; j < speData.width; j += stride) {
                 newFrame.push(oneFrame[i * speData.width + j]);
@@ -101,20 +106,13 @@ async function drawARSpec(chart: ECharts, speData: SpeData, name: string, xMin: 
         },
         xAxis: [
             {
+                show: false,
                 type: 'category',
-                position: 'top',
+                position: 'bottom',
                 data: xData,
-                axisTick: {
-                    show: false
-                },
-                axisLine: {
-                    show: false
-                },
-                axisLabel: {
-                    show: false
-                },
             },
             {
+                show: true,
                 type: 'value',
                 position: 'bottom',
                 min: xMin,
@@ -136,21 +134,36 @@ async function drawARSpec(chart: ECharts, speData: SpeData, name: string, xMin: 
                     }
                 },
             },
-        ],
-        yAxis: [
             {
-                type: 'category',
-                position: 'right',
-                data: yData,
+                show: false,
+                type: 'value',
+                position: 'bottom',
+                min: xMin,
+                max: xMax,
+                nameLocation: 'center', nameGap: 28,
+                name: "tan(θ)", nameTextStyle: {
+                    color: "#000", fontFamily: 'Times New Roman', fontSize: 16
+                },
                 axisTick: {
-                    show: false
+                    show: true, color: "#000"
                 },
                 axisLine: {
                     show: false
                 },
                 axisLabel: {
-                    show: false
+                    color: "#000", fontFamily: 'Times New Roman', fontSize: 14,
+                    formatter: (value: number) => {
+                        return value.toFixed(2);
+                    }
                 },
+            },
+        ],
+        yAxis: [
+            {
+                show: false,
+                type: 'category',
+                position: 'right',
+                data: yData,
             },
             {
                 type: 'value',
@@ -171,7 +184,48 @@ async function drawARSpec(chart: ECharts, speData: SpeData, name: string, xMin: 
                     }
                 },
             },
+            {
+                show: false,
+                type: 'value',
+                position: 'left',
+                min: CONST_1240 / yData[yLength - 1],
+                max: CONST_1240 / yData[0],
+                nameLocation: 'center', nameGap: 42,
+                name: "Energy (eV)", nameTextStyle: {
+                    color: "#000", fontFamily: 'Times New Roman', fontSize: 16
+                },
+                axisTick: {
+                    show: true, color: "#000"
+                },
+                axisLabel: {
+                    color: "#000", fontFamily: 'Times New Roman', fontSize: 14,
+                    formatter: (value: number) => {
+                        return value.toFixed(2);
+                    }
+                },
+            },
         ],
+        dataZoom: [{
+            type: 'slider',
+            xAxisIndex: 0,
+            show: false
+        }, {
+            type: 'slider',
+            yAxisIndex: 0,
+            show: false
+        }, {
+            type: 'slider',
+            xAxisIndex: 1,
+            show: false
+        }, {
+            type: 'slider',
+            yAxisIndex: 1,
+            show: false
+        }, {
+            type: 'slider',
+            yAxisIndex: 2,
+            show: false
+        }],
         visualMap: {
             min: zMin,
             max: zMax,
@@ -288,7 +342,8 @@ async function drawSpec(chart: ECharts, speData: SpeData, index: number, name: s
 
 }
 
-function saveImage(chart: echarts.ECharts, name: string) {
+function saveImage(chart: echarts.ECharts, name: string, isntDrawn: boolean) {
+    if(isntDrawn) { return }
     let url1 = chart.getDataURL({
         type: 'png',
         pixelRatio: 3,
@@ -300,4 +355,4 @@ function saveImage(chart: echarts.ECharts, name: string) {
     link1.click();
 }
 
-export { SpeData, downSampling, drawARSpec, drawSpec, saveImage }
+export { CONST_1240, SpeData, downSampling, drawARSpec, drawSpec, saveImage }

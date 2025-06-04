@@ -19,7 +19,7 @@ const fileName = ref('');
 const sliceIndex = ref(0);
 
 const hintText = ref('');
-// const hint = useTemplateRef('hint');
+
 function showHint(text: string) {
   hintText.value = text;
   setTimeout(() => hintText.value = '', 3000);
@@ -45,41 +45,40 @@ async function openDataFile() {
     }]
   });
 
-  if(filePath) {
+  if (filePath) {
     openFromPath(filePath);
   }
 }
 
 async function dropToOpen(e: DragEvent) {
   console.log('drop');
-  if(e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-    let filePath  = e.dataTransfer.files[0];
+  if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+    let filePath = e.dataTransfer.files[0];
     console.log(filePath);
   }
 }
 
 onMounted(async () => {
   let source = (await getMatches()).args.source.value;
-  if(typeof source == 'string') {
-    if(source.substring(source.length - 4) == '.spe') {
+  if (typeof source == 'string') {
+    if (source.substring(source.length - 4) == '.spe') {
       openFromPath(source);
     }
   }
-  listen<{[key: string]: any}>('tauri://drag-drop', event => {
+  listen<{ [key: string]: any }>('tauri://drag-drop', event => {
     let filePath: string = event.payload.paths[0];
-    if(filePath.substring(filePath.length - 4) == '.spe') {
+    if (filePath.substring(filePath.length - 4) == '.spe') {
       openFromPath(filePath);
     }
-});
+  });
 })
 </script>
 
 <template>
   <nav>
-    <button @click="openDataFile">
-      <IconOpen/>打开文件
+    <button @click="openDataFile" title="打开文件">
+      <IconOpen />
     </button>
-    <p>{{ workingPath }}</p>
   </nav>
   <Teleport to="body">
     <Transition name="hint">
@@ -87,8 +86,9 @@ onMounted(async () => {
     </Transition>
   </Teleport>
   <div id="content" @dragover.prevent="" @drop="dropToOpen">
-    <ARSpectrumViewer v-if="speData" :data="speData" :name="fileName" @copy-to-clipboard="showHint" />
-    <SpectrumViewer v-if="speData" :data="speData" :name="fileName" v-model="sliceIndex"
+    <ARSpectrumViewer :data="speData" :name="fileName" :path="workingPath" @copy-to-clipboard="showHint"
+      @slice-at-index="index => sliceIndex = index" />
+    <SpectrumViewer :data="speData" :name="fileName" v-model="sliceIndex"
       @copy-to-clipboard="showHint" />
   </div>
 </template>

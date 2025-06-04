@@ -1,18 +1,32 @@
+:root {
+    --color-bg-10: white;
+    --color-bg-9: rgb(242, 242, 242);
+    --color-bg-8: rgb(230, 230, 230);
+    --color-bg-7: rgb(217, 217, 217);
+    --color-bg-6: rgb(204, 204, 204);
+}
+
 body {
-    background-color: rgb(250, 250, 250);
+    background-color: var(--color-bg-8);
     display: flex;
-    flex-direction: column;
     margin: 0px;
     color: rgb(32, 32, 32);
-    justify-items: center;
+}
+
+#app {
+    display: flex;
+    position: absolute;
+    top: 0px;
+    width: 100%;
+    bottom: 0px
 }
 
 nav {
-    background-color: rgb(223, 223, 223);
+    background-color: var(--color-bg-7);
     display: flex;
-    gap: 2mm;
-    padding: 0px 2mm;
-    height: 1cm;
+    flex-direction: column;
+    gap: 1.5mm;
+    padding: 3mm 1.5mm;
     align-items: center;
 }
 
@@ -20,6 +34,14 @@ p, label {
     margin: 0px;
     font-size: 3.6mm;
     text-wrap: nowrap;
+    align-content: center;
+}
+
+h3 {
+    margin: 8mm 0px 0px 8mm;
+    justify-content: center;
+    color: rgb(96, 96, 96);
+    user-select: none;
 }
 
 label {
@@ -28,35 +50,40 @@ label {
 
 input[type="number"],
 input[type="text"] {
-    background-color: rgb(240, 240, 240);
+    background-color: var(--color-bg-10);
     font-size: 3.6mm;
     padding: 1mm;
     color: rgb(64, 64, 64);
     border-radius: 1mm;
     border-width: 0px;
     outline-width: 0px;
-    max-width: 1cm;
+    max-width: 12mm;
     height: 6mm;
 }
 
 input[type="number"]:focus,
 input[type="text"]:focus {
-    background-color: white;
     color: black;
-    filter: drop-shadow(0px 0px 8px rgba(0, 0, 0, 0.1))
+    filter: drop-shadow(0px 0px 8px rgba(0, 0, 0, 0.2))
 }
 
 .hint {
-    background-color: rgba(59, 209, 39, 0.5);
-    color: white;
+    background-color: var(--color-bg-9);
     position: relative;
-    padding: 1mm 2mm;
-    border-radius: 1mm;
+    padding: 2mm 3mm 2mm 2mm;
+    border-radius: 2mm;
     top: 2mm;
-    /* left: 50%; */
+    font-size: 3.6mm;
     margin: 0px auto;
     justify-self: center;
     z-index: 2;
+    filter: drop-shadow(0px 0px 8px rgba(0, 0, 0, 0.2))
+}
+
+.hint::before {
+    content: '●';
+    color: rgba(59, 209, 39, 0.5);
+    margin-right: 2mm;
 }
 
 button {
@@ -71,6 +98,7 @@ button {
     align-items: center;
     transition: 0.3s;
     user-select: none;
+    filter: hue-rotate(45deg);
 }
 
 button > svg {
@@ -79,27 +107,22 @@ button > svg {
 }
 
 button:hover {
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: var(--color-bg-9);
+    filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.2));
+
 }
 
 button:active {
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 #content {
-    position: absolute;
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: repeat(2, auto);
     padding: 3mm;
     gap: 3mm;
-    /* display: grid;
-    grid-template-columns: 100%;
-    grid-template-rows: 100%; */
-    /* display: flex; */
-    bottom: 0px;
-    top: 1cm;
-    right: 0px;
-    left: 0px;
     transition: 0.5s;
+    width: 100%;
+    justify-content: space-around;
     overflow: auto;
 }

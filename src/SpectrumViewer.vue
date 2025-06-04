@@ -7,7 +7,7 @@ import * as echarts from 'echarts';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 
 const prop = defineProps<{
-    data: SpeData
+    data?: SpeData
     name: string
 }>()
 
@@ -33,8 +33,10 @@ watch(sliceIndex, newIndex => {
         chart2.dispose();
     }
     nextTick().then(() => {
-        chart2 = echarts.init(spec.value! as HTMLDivElement);
-        drawSpec(chart2, prop.data, newIndex, prop.name);
+        if(prop.data) {
+            chart2 = echarts.init(spec.value! as HTMLDivElement);
+            drawSpec(chart2, prop.data, newIndex, prop.name);
+        }
     })
 }, { immediate: true });
 
@@ -44,8 +46,8 @@ function copyToClipboard() {
     emit('copy-to-clipboard', '数据已复制到剪贴板，可在Origin直接粘贴表格');
 
     let str = 'Wavelength\tcounts\nnm\n\n';
-    prop.data.wavelength.forEach((lambda, j) => {
-        str += `${lambda}\t${prop.data.frame[0][sliceIndex.value * prop.data.width + j]}\n`;
+    prop.data!.wavelength.forEach((lambda, j) => {
+        str += `${lambda}\t${prop.data!.frame[0][sliceIndex.value * prop.data!.width + j]}\n`;
     });
     writeText(str);
 }
@@ -56,13 +58,13 @@ function copyToClipboard() {
         <div ref="spec" id="spectrum"></div>
         <div id="slice-index-input">
             <label for="slice-index">横轴索引</label>
-            <input type="range" :min="0" :max="prop.data.height - 1" v-model.number="sliceIndex">
+            <input v-if="prop.data" type="range" :min="0" :max="prop.data.height - 1" v-model.number="sliceIndex">
             <input id="slice-index" type="number" v-model.number="sliceIndex">
         </div>
         <button style="grid-column-start: 3;" @click="copyToClipboard" title="复制数据到剪贴板">
             <IconCopy />
         </button>
-        <button style="grid-column-start: 4;" @click="saveImage(chart2, `切片光谱-${prop.name}`)" title="导出图片">
+        <button style="grid-column-start: 4;" @click="saveImage(chart2, `切片光谱-${prop.name}`, !prop.data)" title="导出图片">
             <IconExport />
         </button>
     </div>
@@ -71,23 +73,28 @@ function copyToClipboard() {
 <style>
 #spec-container {
     padding: 2mm;
-    gap: 1mm;
-    background-color: rgb(223, 223, 223);
+    gap: 2mm;
+    background-color: var(--color-bg-9);
+    /* border: 2px solid var(--color-bg-9); */
     border-radius: 3mm;
     display: grid;
     grid-template-rows: 1fr auto;
     grid-template-columns: auto 1fr auto auto;
     transition: 0.3s;
+    filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.1))
 }
 
 #spec-container:hover {
-    filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.1))
+    /* background: 
+        linear-gradient(var(--color-bg-9), var(--color-bg-9)) padding-box,
+        linear-gradient(-45deg, rgba(240,249,33,1) 0%, rgba(253,153,39,1) 20%, rgba(223,55,83,1) 40%, rgba(158,6,152,1) 60%, rgba(83,1,168,1) 80%, rgba(13,8,135,1) 100%) border-box;
+    border: 2px solid transparent; */
+    filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.2))
 }
 
 #spectrum {
     width: 16cm;
     height: 12cm;
-    /* margin: 0px auto; */
     background-color: white;
     border-radius: 1mm;
     grid-column: 1 / -1;
