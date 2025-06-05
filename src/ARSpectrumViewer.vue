@@ -25,7 +25,7 @@ const dataSnapshot = computed(() => {
     }
 })
 
-const emit = defineEmits(['copy-to-clipboard', 'slice-at-index']);
+const emit = defineEmits(['show-message', 'slice-at-index']);
 
 const xMinIndex = ref();
 const xMaxIndex = ref();
@@ -216,7 +216,7 @@ function resetXBinding() {
 function copyToClipboard() {
     if (!prop.data) { return }
 
-    emit('copy-to-clipboard', '数据已复制到剪贴板，可在Origin直接粘贴表格');
+    emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格');
 
     let str = `${xAxisIsTan.value ? 'tan(θ)' : 'Index'}\t${yAxisMode.value ? 'Wavelength' : 'Energy'}\tcounts
                 \t${yAxisMode.value ? 'nm' : 'eV'}\n\n`;
@@ -263,7 +263,9 @@ function copyToClipboard() {
         <button style="grid-column-start: 2;" @click="copyToClipboard" title="复制数据到剪贴板">
             <IconCopy />
         </button>
-        <button style="grid-column-start: 3;" @click="saveImage(chart1, `角分辨光谱-${prop.name}`, !prop.data)" title="导出图片">
+        <button style="grid-column-start: 3;" @click="saveImage(chart1, `角分辨光谱-${prop.name}`, !prop.data).then(msg => {
+            if (msg) { emit('show-message', msg) }
+        })" title="导出图片">
             <IconExport />
         </button>
         <Transition>

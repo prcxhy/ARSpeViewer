@@ -1,3 +1,6 @@
+import { path } from '@tauri-apps/api';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeFile } from '@tauri-apps/plugin-fs';
 import { ECharts } from 'echarts';
 
 const H = 6.62607015e-34;
@@ -342,17 +345,31 @@ async function drawSpec(chart: ECharts, speData: SpeData, index: number, name: s
 
 }
 
-function saveImage(chart: echarts.ECharts, name: string, isntDrawn: boolean) {
+async function saveImage(chart: echarts.ECharts, name: string, isntDrawn: boolean) {
     if(isntDrawn) { return }
-    let url1 = chart.getDataURL({
-        type: 'png',
-        pixelRatio: 3,
-        backgroundColor: '#fff'
-    });
-    let link1 = document.createElement('a');
-    link1.href = url1;
-    link1.download = name;
-    link1.click();
+    let picturePath = await path.pictureDir();
+    let defaultPath = await path.join(picturePath, name);
+    let savePath = await save({
+        defaultPath: defaultPath,
+        filters: [{
+            name: '*.png 图片',
+            extensions: ['png'],
+        }]
+    })
+    if(savePath) {
+        let url = chart.getDataURL({
+            type: 'png',
+            pixelRatio: 3,
+            backgroundColor: '#fff'
+        });
+        let binaryString = atob(url.split(',')[1]);
+        let u8Array = new Uint8Array(binaryString.length);
+        for (var i = 0; i < binaryString.length; i++) {
+            u8Array[i] = binaryString.charCodeAt(i);
+        }
+        writeFile(savePath, u8Array);
+        return '已将图片保存到 ' + savePath
+    }
 }
 
 export { CONST_1240, SpeData, downSampling, drawARSpec, drawSpec, saveImage }

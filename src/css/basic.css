@@ -67,7 +67,7 @@ input[type="text"]:focus {
     filter: drop-shadow(0px 0px 8px rgba(0, 0, 0, 0.2))
 }
 
-.hint {
+.message {
     background-color: var(--color-bg-9);
     position: relative;
     padding: 2mm 3mm 2mm 2mm;
@@ -80,7 +80,7 @@ input[type="text"]:focus {
     filter: drop-shadow(0px 0px 8px rgba(0, 0, 0, 0.2))
 }
 
-.hint::before {
+.message::before {
     content: '●';
     color: rgba(59, 209, 39, 0.5);
     margin-right: 2mm;

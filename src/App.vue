@@ -18,11 +18,11 @@ const fileName = ref('');
 
 const sliceIndex = ref(0);
 
-const hintText = ref('');
+const MessageText = ref('');
 
-function showHint(text: string) {
-  hintText.value = text;
-  setTimeout(() => hintText.value = '', 3000);
+function showMessage(text: string) {
+  MessageText.value = text;
+  setTimeout(() => MessageText.value = '', 3000);
 }
 
 async function openFromPath(filePath: string) {
@@ -81,26 +81,26 @@ onMounted(async () => {
     </button>
   </nav>
   <Teleport to="body">
-    <Transition name="hint">
-      <p ref="hint" v-if="hintText != ''" class="hint">{{ hintText }}</p>
+    <Transition name="message">
+      <p ref="message" v-if="MessageText != ''" class="message">{{ MessageText }}</p>
     </Transition>
   </Teleport>
   <div id="content" @dragover.prevent="" @drop="dropToOpen">
-    <ARSpectrumViewer :data="speData" :name="fileName" :path="workingPath" @copy-to-clipboard="showHint"
+    <ARSpectrumViewer :data="speData" :name="fileName" :path="workingPath" @show-message="showMessage"
       @slice-at-index="index => sliceIndex = index" />
     <SpectrumViewer :data="speData" :name="fileName" v-model="sliceIndex"
-      @copy-to-clipboard="showHint" />
+      @show-message="showMessage" />
   </div>
 </template>
 
 <style>
-.hint-enter-active,
-.hint-leave-active {
+.message-enter-active,
+.message-leave-active {
   transition: all 0.3s ease;
 }
 
-.hint-enter-from,
-.hint-leave-to {
+.message-enter-from,
+.message-leave-to {
   opacity: 0;
   transform: translateY(-10px);
 }

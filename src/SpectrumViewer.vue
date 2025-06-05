@@ -33,17 +33,17 @@ watch(sliceIndex, newIndex => {
         chart2.dispose();
     }
     nextTick().then(() => {
-        if(prop.data) {
+        if (prop.data) {
             chart2 = echarts.init(spec.value! as HTMLDivElement);
             drawSpec(chart2, prop.data, newIndex, prop.name);
         }
     })
 }, { immediate: true });
 
-const emit = defineEmits(['copy-to-clipboard']);
+const emit = defineEmits(['show-message']);
 
 function copyToClipboard() {
-    emit('copy-to-clipboard', '数据已复制到剪贴板，可在Origin直接粘贴表格');
+    emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格');
 
     let str = 'Wavelength\tcounts\nnm\n\n';
     prop.data!.wavelength.forEach((lambda, j) => {
@@ -64,7 +64,9 @@ function copyToClipboard() {
         <button style="grid-column-start: 3;" @click="copyToClipboard" title="复制数据到剪贴板">
             <IconCopy />
         </button>
-        <button style="grid-column-start: 4;" @click="saveImage(chart2, `切片光谱-${prop.name}`, !prop.data)" title="导出图片">
+        <button style="grid-column-start: 4;" @click="saveImage(chart2, `切片光谱-${prop.name}`, !prop.data).then(msg => {
+            if (msg) { emit('show-message', msg) }
+        })" title="导出图片">
             <IconExport />
         </button>
     </div>
