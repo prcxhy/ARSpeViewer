@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, nextTick, onMounted, Ref, ref, useTemplateRef, watch } from 'vue';
 import * as echarts from 'echarts';
 import { downSampling, drawARSpec, SpeData, saveImage, CONST_1240 } from './scripts/DataViewer';
 import ModeSwitch from './components/ModeSwitch.vue';
 import IconOption from './assets/config.svg?component';
 import IconArrow from './assets/right.svg?component';
 import IconCopy from './assets/clipboard.svg?component';
-import IconExport from './assets/export.svg?component';
+import IconExport from './assets/down-picture.svg?component';
+import IconOpen from './assets/folder-open.svg?component';
 import IconReset from './assets/undo.svg?component';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 
@@ -16,16 +17,18 @@ const prop = defineProps<{
     path: string
 }>()
 
+const silentPath: Ref<string> | undefined = inject('silentlySave');
+
 var chart1: echarts.ECharts;
 const arspc = useTemplateRef('arspc');
 
 const dataSnapshot = computed(() => {
     if (prop.data) {
-        return downSampling(prop.data, 3);
+        return downSampling(prop.data, 2);
     }
 })
 
-const emit = defineEmits(['copy-to-clipboard', 'slice-at-index']);
+const emit = defineEmits(['show-message', 'slice-at-index']);
 
 const xMinIndex = ref();
 const xMaxIndex = ref();
@@ -49,16 +52,24 @@ const yMaxEnergy = computed({
 });
 const yMinIndex = computed(() => {
     if (dataSnapshot.value) {
-        let min = dataSnapshot.value!.wavelength[0];
-        let max = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
-        return Math.round((yMinLambda.value - min) / (max - min) * (dataSnapshot.value!.width - 1));
+        if (dataSnapshot.value.wavelength) {
+            let min = dataSnapshot.value.wavelength[0];
+            let max = dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
+            return Math.round((yMinLambda.value - min) / (max - min) * (dataSnapshot.value.width - 1));
+        } else {
+            return Math.round(yMinLambda.value / (prop.data!.width - 1) * (dataSnapshot.value.width - 1));
+        }
     }
 });
 const yMaxIndex = computed(() => {
     if (dataSnapshot.value) {
-        let min = dataSnapshot.value!.wavelength[0];
-        let max = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
-        return Math.round((yMaxLambda.value - min) / (max - min) * (dataSnapshot.value!.width - 1));
+        if (dataSnapshot.value.wavelength) {
+            let min = dataSnapshot.value.wavelength[0];
+            let max = dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
+            return Math.round((yMaxLambda.value - min) / (max - min) * (dataSnapshot.value.width - 1));
+        } else {
+            return Math.round(yMaxLambda.value / (prop.data!.width - 1) * (dataSnapshot.value.width - 1));
+        }
     }
 });
 
@@ -76,12 +87,16 @@ onMounted(() => {
 watch(() => prop.data, newData => {
     nextTick(() => {
         if (newData) {
-            drawARSpec(chart1, dataSnapshot.value!, prop.name, 0, prop.data!.height - 1);
+            drawARSpec(chart1, dataSnapshot.value!, {
+                name: prop.name,
+                yMin: 0, yMax: prop.data!.width - 1,
+                xMin: 0, xMax: prop.data!.height - 1
+            });
             yAxisMode.value = true;
             xMinIndex.value = 0;
             xMaxIndex.value = newData!.height - 1;
-            yMinLambda.value = newData!.wavelength[0];
-            yMaxLambda.value = newData!.wavelength[newData!.width - 1];
+            yMinLambda.value = newData!.wavelength ? newData!.wavelength[0] : 0;
+            yMaxLambda.value = newData!.wavelength ? newData!.wavelength[newData!.width - 1] : newData!.width - 1;
         }
     })
 }, { immediate: true });
@@ -163,11 +178,13 @@ watch(yMinIndex, newIndex => {
         dataZoomIndex: 3,
         startValue: yMinLambda.value,
     });
-    chart1.dispatchAction({
-        type: 'dataZoom',
-        dataZoomIndex: 4,
-        startValue: yMaxEnergy.value,
-    });
+    if (prop.data!.wavelength) {
+        chart1.dispatchAction({
+            type: 'dataZoom',
+            dataZoomIndex: 4,
+            startValue: yMaxEnergy.value,
+        });
+    }
 })
 
 watch(yMaxIndex, newIndex => {
@@ -181,11 +198,13 @@ watch(yMaxIndex, newIndex => {
         dataZoomIndex: 3,
         endValue: yMaxLambda.value,
     });
-    chart1.dispatchAction({
-        type: 'dataZoom',
-        dataZoomIndex: 4,
-        endValue: yMinEnergy.value,
-    });
+    if (prop.data!.wavelength) {
+        chart1.dispatchAction({
+            type: 'dataZoom',
+            dataZoomIndex: 4,
+            endValue: yMinEnergy.value,
+        });
+    }
 })
 
 watch(yAxisMode, isWavelength => {
@@ -201,8 +220,13 @@ watch(yAxisMode, isWavelength => {
 const showOptions = ref(false);
 
 function resetYRange() {
-    yMinLambda.value = dataSnapshot.value!.wavelength[0];
-    yMaxLambda.value = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
+    if (dataSnapshot.value!.wavelength) {
+        yMinLambda.value = dataSnapshot.value!.wavelength[0];
+        yMaxLambda.value = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
+    } else {
+        yMinLambda.value = 0;
+        yMaxLambda.value = prop.data!.width - 1;
+    }
 }
 function resetXRange() {
     xMinIndex.value = 0;
@@ -216,10 +240,16 @@ function resetXBinding() {
 function copyToClipboard() {
     if (!prop.data) { return }
 
-    emit('copy-to-clipboard', '数据已复制到剪贴板，可在Origin直接粘贴表格');
-
-    let str = `${xAxisIsTan.value ? 'tan(θ)' : 'Index'}\t${yAxisMode.value ? 'Wavelength' : 'Energy'}\tcounts
+    emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格');
+    let str = '';
+    if (prop.data!.wavelength) {
+        str = `${xAxisIsTan.value ? 'tan(θ)' : 'Index'}\t${yAxisMode.value ? 'Wavelength' : 'Energy'}\tcounts
                 \t${yAxisMode.value ? 'nm' : 'eV'}\n\n`;
+    } else {
+        str = `${xAxisIsTan.value ? 'tan(θ)' : 'Index'}\t\tcounts\n\n\n`;
+    }
+
+    let key = Object.keys(prop.data!.frame[0])[0];
     if (xAxisIsTan.value) {
         let minTan = Math.tan(xMinAngle.value / 180 * Math.PI);
         let maxTan = Math.tan(xMaxAngle.value / 180 * Math.PI);
@@ -234,14 +264,20 @@ function copyToClipboard() {
         }
     }
     str += '\n';
-    let min = prop.data!.wavelength[0];
-    let max = prop.data!.wavelength[prop.data!.width - 1];
-    let yMin = Math.round((yMinLambda.value - min) / (max - min) * (prop.data!.width - 1));
-    let yMax = Math.round((yMaxLambda.value - min) / (max - min) * (prop.data!.width - 1));
+    let yMin = yMinLambda.value;
+    let yMax = yMaxLambda.value;
+    if (prop.data!.wavelength) {
+        let min = prop.data!.wavelength[0];
+        let max = prop.data!.wavelength[prop.data!.width - 1];
+        yMin = Math.round((yMin - min) / (max - min) * (prop.data!.width - 1));
+        yMax = Math.round((yMax - min) / (max - min) * (prop.data!.width - 1));
+    }
     for (var i = yMin; i <= yMax; i++) {
-        str += `${yAxisMode.value ? prop.data!.wavelength[i] : (CONST_1240 / prop.data!.wavelength[i])}`;
+        if (prop.data!.wavelength) {
+            str += `${yAxisMode.value ? prop.data!.wavelength[i] : (CONST_1240 / prop.data!.wavelength[i])}`;
+        }
         for (var j = xMinIndex.value; j <= xMaxIndex.value; j++) {
-            str += `\t${prop.data!.frame[0][j * prop.data!.width + i]}`;
+            str += `\t${prop.data!.frame[0][key][j * prop.data!.width + i]}`;
         }
         str += '\n';
     }
@@ -251,24 +287,30 @@ function copyToClipboard() {
 
 <template>
     <div id="arspc-container">
-        <p style="grid-column: 1 / 3;">{{ prop.path }}</p>
+        <p style="grid-column: 1 / 3; overflow: hidden;">{{ prop.path }}</p>
         <button @click="showOptions = !showOptions" title="选项">
             <IconOption v-if="!showOptions" />
             <IconArrow v-if="showOptions" />
         </button>
         <div v-show="!prop.data" id="heatmap-placeholder">
-            <h3>↖<br>&nbsp;&nbsp;&nbsp;&nbsp;点击打开文件，或将*.spe文件拖拽到窗口内</h3>
+            <h3>↖<br>&nbsp;&nbsp;&nbsp;&nbsp;点击
+                <IconOpen style="width: 5mm;" /> 打开文件，或将*.spe文件拖拽到窗口内
+            </h3>
         </div>
         <div v-show="prop.data" ref="arspc" id="ar-spectrum"></div>
         <button style="grid-column-start: 2;" @click="copyToClipboard" title="复制数据到剪贴板">
             <IconCopy />
         </button>
-        <button style="grid-column-start: 3;" @click="saveImage(chart1, `角分辨光谱-${prop.name}`, !prop.data)" title="导出图片">
+        <button id="save-ar-spec" style="grid-column-start: 3;"
+        @click="saveImage(chart1, `角分辨光谱-${prop.name}`, !prop.data, silentPath).then(msg => {
+            if (msg) { emit('show-message', msg) }
+        })" title="导出图片">
             <IconExport />
         </button>
         <Transition>
             <div id="arspc-options" v-if="showOptions">
-                <ModeSwitch :name="'纵轴模式'" :mode1="'波长'" :mode2="'能量'" v-model="yAxisMode" />
+                <ModeSwitch v-if="prop.data!.wavelength" :name="'纵轴模式'" :mode1="'波长'" :mode2="'能量'"
+                    v-model="yAxisMode" />
                 <div class="range-input-lambda" v-show="yAxisMode">
                     <label for="y-min-lambda">纵轴范围</label>
                     <button @click="resetYRange" title="重置">

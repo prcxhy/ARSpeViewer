@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { nextTick, useTemplateRef, watch } from 'vue';
+import { inject, nextTick, Ref, useTemplateRef, watch } from 'vue';
 import IconCopy from './assets/clipboard.svg?component';
-import IconExport from './assets/export.svg?component';
+import IconExport from './assets/down-picture.svg?component';
 import { drawSpec, saveImage, SpeData } from './scripts/DataViewer';
 import * as echarts from 'echarts';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -10,6 +10,7 @@ const prop = defineProps<{
     data?: SpeData
     name: string
 }>()
+const silentPath: Ref<string> | undefined = inject('silentlySave');
 
 var chart2: echarts.ECharts;
 const spec = useTemplateRef('spec');
@@ -33,22 +34,30 @@ watch(sliceIndex, newIndex => {
         chart2.dispose();
     }
     nextTick().then(() => {
-        if(prop.data) {
+        if (prop.data) {
             chart2 = echarts.init(spec.value! as HTMLDivElement);
             drawSpec(chart2, prop.data, newIndex, prop.name);
         }
     })
 }, { immediate: true });
 
-const emit = defineEmits(['copy-to-clipboard']);
+const emit = defineEmits(['show-message']);
 
 function copyToClipboard() {
-    emit('copy-to-clipboard', '数据已复制到剪贴板，可在Origin直接粘贴表格');
+    if (!prop.data) { return }
 
-    let str = 'Wavelength\tcounts\nnm\n\n';
-    prop.data!.wavelength.forEach((lambda, j) => {
-        str += `${lambda}\t${prop.data!.frame[0][sliceIndex.value * prop.data!.width + j]}\n`;
-    });
+    emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格');
+    let str = prop.data!.wavelength ? 'Wavelength\tcounts\nnm\n\n' : 'counts\n\n\n';
+
+    let key = Object.keys(prop.data!.frame[0])[0];
+    if (prop.data?.wavelength) {
+        prop.data.wavelength.forEach((lambda, j) => {
+            str += `${lambda}\t${prop.data?.frame[0][key][sliceIndex.value * prop.data!.width + j]}\n`;
+        })
+    } else {
+        let start = sliceIndex.value * prop.data!.width;
+        str += prop.data?.frame[0][key].slice(start, start + prop.data!.width).join('\n');
+    }
     writeText(str);
 }
 </script>
@@ -64,7 +73,10 @@ function copyToClipboard() {
         <button style="grid-column-start: 3;" @click="copyToClipboard" title="复制数据到剪贴板">
             <IconCopy />
         </button>
-        <button style="grid-column-start: 4;" @click="saveImage(chart2, `切片光谱-${prop.name}`, !prop.data)" title="导出图片">
+        <button id="save-slice-spec" style="grid-column-start: 4;"
+        @click="saveImage(chart2, `切片光谱-${prop.name}`, !prop.data, silentPath).then(msg => {
+            if (msg) { emit('show-message', msg) }
+        })" title="导出图片">
             <IconExport />
         </button>
     </div>
