@@ -34,11 +34,13 @@ p, label {
     margin: 0px;
     font-size: 3.6mm;
     text-wrap: nowrap;
+    max-width: 11cm;
+    text-overflow: ellipsis;
     align-content: center;
 }
 
 h3 {
-    margin: 8mm 0px 0px 8mm;
+    margin: 4mm 0px 0px 4mm;
     justify-content: center;
     color: rgb(96, 96, 96);
     user-select: none;
@@ -77,7 +79,8 @@ input[type="text"]:focus {
     margin: 0px auto;
     justify-self: center;
     z-index: 2;
-    filter: drop-shadow(0px 0px 8px rgba(0, 0, 0, 0.2))
+    filter: drop-shadow(0px 0px 8px rgba(0, 0, 0, 0.2));
+    overflow: hidden;
 }
 
 .message::before {

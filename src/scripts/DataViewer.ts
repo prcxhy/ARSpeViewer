@@ -9,11 +9,11 @@ const e = 1.602176634e-19;
 const CONST_1240 = H * C0 * 1e9 / e;
 
 class SpeData {
-    min_max: number[][];
-    frame: number[][];
+    min_max: {[key: string]: number[]}[];
+    frame: {[key: string]: number[]}[];
     width: number;
     height: number;
-    wavelength: number[];
+    wavelength: number[] | null;
     detector_angle_cal: number;
     focal_length_cal: number;
     inclusion_angle_cal: number;
@@ -21,11 +21,11 @@ class SpeData {
     focal_length_exp: number;
     inclusion_angle_exp: number;
     constructor(
-        min_max: number[][],
-        frame: number[][],
+        min_max: {[key: string]: number[]}[],
+        frame: {[key: string]: number[]}[],
         width: number,
         height: number,
-        wavelength: number[],
+        wavelength: number[] | null,
         detector_angle_cal: number,
         focal_length_cal: number,
         inclusion_angle_cal: number,
@@ -56,39 +56,52 @@ function downSampling(speData: SpeData, stride: number): SpeData {
     let snapshot = { ...speData };
     snapshot.width = Math.ceil(speData.width / stride);
     snapshot.height = Math.ceil(speData.height / stride);
-    snapshot.wavelength = [];
-    for (var i = 0; i < speData.width; i += stride) {
-        snapshot.wavelength.push(speData.wavelength[i]);
-    }
+    if(speData.wavelength) {
+        snapshot.wavelength = [];
+        for (var i = 0; i < speData.width; i += stride) {
+            snapshot.wavelength.push(speData.wavelength[i]);
+        }
+    } 
     snapshot.frame = speData.frame.map(oneFrame => {
+        let key: string = Object.keys(oneFrame)[0];
         let newFrame: number[] = [];
         for (var i = 0; i < speData.height; i += stride) {
             for (var j = 0; j < speData.width; j += stride) {
-                newFrame.push(oneFrame[i * speData.width + j]);
+                newFrame.push(oneFrame[key][i * speData.width + j]);
             }
         }
-        return newFrame;
+        let result: {[key: string]: number[]} = {};
+        result[key] = newFrame;
+        return result;
     })
     return snapshot;
 }
 
-async function drawARSpec(chart: ECharts, speData: SpeData, name: string, xMin: number, xMax: number) {
+async function drawARSpec(
+    chart: ECharts, speData: SpeData,
+    info: {
+        name: string,
+        yMin: number, yMax: number,
+        xMin: number, xMax: number
+    }) {
+    let key = Object.keys(speData.frame[0])[0];
+
     let data: number[][] = [];
     let xLength = speData.height;
     let yLength = speData.width;
     let xData = Array.from({ length: xLength }, (_, i) => i);
     let yData = speData.wavelength;
-    let zMin = speData.min_max[0][0];
-    let zMax = speData.min_max[0][1];
+    let zMin = speData.min_max[0][key][0];
+    let zMax = speData.min_max[0][key][1];
 
     for (var j = 0; j < yLength; j++) {
         for (var i = 0; i < xLength; i++) {
-            data.push([i, j, speData.frame[0][i * yLength + j]])
+            data.push([i, j, speData.frame[0][key][i * yLength + j]])
         }
     }
     chart.setOption({
         title: {
-            text: name, left: 'center', top: 7,
+            text: info.name, left: 'center', top: 7,
             textStyle: { color: "#000", fontSize: 16, fontFamily: 'Arial' }
         },
         tooltip: {
@@ -118,8 +131,8 @@ async function drawARSpec(chart: ECharts, speData: SpeData, name: string, xMin: 
                 show: true,
                 type: 'value',
                 position: 'bottom',
-                min: xMin,
-                max: xMax,
+                min: info.xMin,
+                max: info.xMax,
                 nameLocation: 'center', nameGap: 28,
                 name: "Index", nameTextStyle: {
                     color: "#000", fontFamily: 'Times New Roman', fontSize: 16
@@ -141,8 +154,8 @@ async function drawARSpec(chart: ECharts, speData: SpeData, name: string, xMin: 
                 show: false,
                 type: 'value',
                 position: 'bottom',
-                min: xMin,
-                max: xMax,
+                min: info.xMin,
+                max: info.xMax,
                 nameLocation: 'center', nameGap: 28,
                 name: "tan(θ)", nameTextStyle: {
                     color: "#000", fontFamily: 'Times New Roman', fontSize: 16
@@ -171,10 +184,11 @@ async function drawARSpec(chart: ECharts, speData: SpeData, name: string, xMin: 
             {
                 type: 'value',
                 position: 'left',
-                min: yData[0],
-                max: yData[yLength - 1],
+                min: yData ? yData[0] : info.yMin,
+                max: yData ? yData[yLength - 1] : info.yMax,
                 nameLocation: 'center', nameGap: 42,
-                name: "Wavelength (nm)", nameTextStyle: {
+                name: yData ? "Wavelength (nm)" : "Index",
+                nameTextStyle: {
                     color: "#000", fontFamily: 'Times New Roman', fontSize: 16
                 },
                 axisTick: {
@@ -191,8 +205,8 @@ async function drawARSpec(chart: ECharts, speData: SpeData, name: string, xMin: 
                 show: false,
                 type: 'value',
                 position: 'left',
-                min: CONST_1240 / yData[yLength - 1],
-                max: CONST_1240 / yData[0],
+                min: yData ? CONST_1240 / yData[yLength - 1]: 0,
+                max: yData ? CONST_1240 / yData[0] : yLength - 1,
                 nameLocation: 'center', nameGap: 42,
                 name: "Energy (eV)", nameTextStyle: {
                     color: "#000", fontFamily: 'Times New Roman', fontSize: 16
@@ -277,16 +291,22 @@ async function drawARSpec(chart: ECharts, speData: SpeData, name: string, xMin: 
                         borderWidth: 1
                     }
                 },
-                progressive: 1000,
+                progressive: 2048,
                 animation: false
             }
         ]
     })
 }
 async function drawSpec(chart: ECharts, speData: SpeData, index: number, name: string) {
-    let data = speData.wavelength.map((lambda, j) => {
-        return [lambda, speData.frame[0][index * speData.width + j]]
-    });
+    let key = Object.keys(speData.min_max[0])[0];
+    let data: number[][] = []
+    for(var j = 0; j < speData.width; j++) {
+        if(speData.wavelength) {
+            data.push([speData.wavelength[j], speData.frame[0][key][index * speData.width + j]]);
+        } else {
+            data.push([j, speData.frame[0][key][index * speData.width + j]]);
+        }
+    }
     chart.setOption({
         animation: false,
         tooltip: {
@@ -313,12 +333,13 @@ async function drawSpec(chart: ECharts, speData: SpeData, index: number, name: s
             top: 35, bottom: 49, right: 14, left: 70
         },
         xAxis: {
+            min: speData.wavelength ? speData.wavelength[0] : 0,
+            max: speData.wavelength ? speData.wavelength[speData.width - 1] : speData.width - 1,
             type: 'value', nameLocation: 'center', nameGap: 28,
-            name: "Wavelength (nm)", nameTextStyle: {
+            name: speData.wavelength ? "Wavelength (nm)" : "Index",
+            nameTextStyle: {
                 color: "#000", fontFamily: 'Times New Roman', fontSize: 16
             },
-            min: speData.wavelength[0],
-            max: speData.wavelength[speData.width - 1],
             axisLabel: {
                 color: "#000", fontFamily: 'Times New Roman', fontSize: 14,
             },
@@ -345,14 +366,12 @@ async function drawSpec(chart: ECharts, speData: SpeData, index: number, name: s
 
 }
 
-async function saveImage(chart: echarts.ECharts, name: string, isntDrawn: boolean) {
+async function saveImage(chart: echarts.ECharts, name: string, isntDrawn: boolean, silentPath: string | undefined) {
     if(isntDrawn) { return }
-    let picturePath = await path.pictureDir();
-    let defaultPath = await path.join(picturePath, name);
-    let savePath = await save({
-        defaultPath: defaultPath,
+    let savePath = silentPath ? await path.join(silentPath, `${name}.png`) : await save({
+        defaultPath: name,
         filters: [{
-            name: '*.png 图片',
+            name: 'PNG',
             extensions: ['png'],
         }]
     })

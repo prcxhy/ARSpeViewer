@@ -9,7 +9,10 @@
     "core:default",
     "opener:default",
     "fs:default",
-    "fs:allow-write-file",
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "**" }]
+    },
     "dialog:default",
     "clipboard-manager:default",
     "clipboard-manager:allow-write-text"
