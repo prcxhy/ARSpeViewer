@@ -3,8 +3,6 @@ import { computed, inject, nextTick, onMounted, Ref, ref, useTemplateRef, watch 
 import * as echarts from 'echarts';
 import { downSampling, drawARSpec, SpeData, saveImage, CONST_1240 } from './scripts/DataViewer';
 import ModeSwitch from './components/ModeSwitch.vue';
-import IconOption from './assets/config.svg?component';
-import IconArrow from './assets/right.svg?component';
 import IconCopy from './assets/clipboard.svg?component';
 import IconExport from './assets/down-picture.svg?component';
 import IconOpen from './assets/folder-open.svg?component';
@@ -16,6 +14,8 @@ const prop = defineProps<{
     name: string
     path: string
 }>()
+
+const focusing = ref(false);
 
 const silentPath: Ref<string> | undefined = inject('silentlySave');
 
@@ -217,8 +217,6 @@ watch(yAxisMode, isWavelength => {
     });
 })
 
-const showOptions = ref(false);
-
 function resetYRange() {
     if (dataSnapshot.value!.wavelength) {
         yMinLambda.value = dataSnapshot.value!.wavelength[0];
@@ -286,18 +284,17 @@ function copyToClipboard() {
 </script>
 
 <template>
-    <div id="arspc-container">
-        <p style="grid-column: 1 / 3; overflow: hidden;">{{ prop.path }}</p>
-        <button @click="showOptions = !showOptions" title="选项">
-            <IconOption v-if="!showOptions" />
-            <IconArrow v-if="showOptions" />
-        </button>
-        <div v-show="!prop.data" id="heatmap-placeholder">
-            <h3>↖<br>&nbsp;&nbsp;&nbsp;&nbsp;点击
-                <IconOpen style="width: 5mm;" /> 打开文件，或将*.spe文件拖拽到窗口内
-            </h3>
+    <div id="arspc-container" @mouseover="focusing = true" @mouseleave="focusing = false"
+        :class="['container', focusing ? 'container-focus' : '']">
+        <p style="grid-column: 1 / -1; overflow: hidden;">{{ prop.path }}</p>
+        <div id="ar-spectral-box">
+            <div v-show="!prop.data" id="heatmap-placeholder">
+                <h3>↖<br>&nbsp;&nbsp;&nbsp;&nbsp;点击
+                    <IconOpen style="width: 5mm;" /> 打开文件，或将文件拖拽到窗口内
+                </h3>
+            </div>
+            <div v-show="prop.data" ref="arspc" id="ar-spectral"></div>
         </div>
-        <div v-show="prop.data" ref="arspc" id="ar-spectrum"></div>
         <button style="grid-column-start: 2;" @click="copyToClipboard" title="复制数据到剪贴板">
             <IconCopy />
         </button>
@@ -307,113 +304,81 @@ function copyToClipboard() {
         })" title="导出图片">
             <IconExport />
         </button>
-        <Transition>
-            <div id="arspc-options" v-if="showOptions">
-                <ModeSwitch v-if="prop.data!.wavelength" :name="'纵轴模式'" :mode1="'波长'" :mode2="'能量'"
-                    v-model="yAxisMode" />
-                <div class="range-input-lambda" v-show="yAxisMode">
-                    <label for="y-min-lambda">纵轴范围</label>
-                    <button @click="resetYRange" title="重置">
-                        <IconReset />
-                    </button>
-                    <input id="y-min-lambda" type="text" v-model.number="yMinLambda">
-                    <label for="y-max-lambda">~</label>
-                    <input id="y-max-lambda" type="text" v-model.number="yMaxLambda">
-                </div>
-                <div class="range-input-energy" v-show="!yAxisMode">
-                    <label for="y-min-energy">纵轴范围</label>
-                    <button @click="resetYRange" title="重置">
-                        <IconReset />
-                    </button>
-                    <input id="y-min-energy" type="text" v-model.number="yMinEnergy">
-                    <label for="y-max-energy">~</label>
-                    <input id="y-max-energy" type="text" v-model.number="yMaxEnergy">
-                </div>
-                <div class="range-input-x">
-                    <label for="x-min-index">横轴范围</label>
-                    <button @click="resetXRange" title="重置">
-                        <IconReset />
-                    </button>
-                    <input id="x-min-index" type="number" v-model.number="xMinIndex">
-                    <label for="x-max-index">~</label>
-                    <input id="x-max-index" type="number" v-model.number="xMaxIndex">
-                    <p>(索引)</p>
-                    <label for="x-min-angle" style="grid-column-start: 1">横轴绑定</label>
-                    <button @click="resetXBinding" title="重置">
-                        <IconReset />
-                    </button>
-                    <input id="x-min-angle" type="text" v-model.number="xMinAngle">
-                    <label for="x-max-angle">°</label>
-                    <input id="x-max-angle" type="text" v-model.number="xMaxAngle">
-                    <p>°</p>
-                </div>
-            </div>
-        </Transition>
+    </div>
+    <div id="arspc-options" @mouseover="focusing = true" @mouseleave="focusing = false"
+    :class="['container', focusing ? 'container-focus' : '']">
+        <ModeSwitch v-if="prop.data?.wavelength" :name="'纵轴模式'" :mode1="'波长'" :mode2="'能量'" v-model="yAxisMode" />
+        <div class="range-input-lambda" v-show="yAxisMode">
+            <label for="y-min-lambda">纵轴范围</label>
+            <button @click="resetYRange" title="重置">
+                <IconReset />
+            </button>
+            <input id="y-min-lambda" type="text" v-model.number="yMinLambda">
+            <label for="y-max-lambda">~</label>
+            <input id="y-max-lambda" type="text" v-model.number="yMaxLambda">
+        </div>
+        <div class="range-input-energy" v-show="!yAxisMode">
+            <label for="y-min-energy">纵轴范围</label>
+            <button @click="resetYRange" title="重置">
+                <IconReset />
+            </button>
+            <input id="y-min-energy" type="text" v-model.number="yMinEnergy">
+            <label for="y-max-energy">~</label>
+            <input id="y-max-energy" type="text" v-model.number="yMaxEnergy">
+        </div>
+        <div class="range-input-x">
+            <label for="x-min-index">横轴范围</label>
+            <button @click="resetXRange" title="重置">
+                <IconReset />
+            </button>
+            <input id="x-min-index" type="number" v-model.number="xMinIndex">
+            <label for="x-max-index">~</label>
+            <input id="x-max-index" type="number" v-model.number="xMaxIndex">
+            <p>(索引)</p>
+            <label for="x-min-angle" style="grid-column-start: 1">横轴绑定</label>
+            <button @click="resetXBinding" title="重置">
+                <IconReset />
+            </button>
+            <input id="x-min-angle" type="text" v-model.number="xMinAngle">
+            <label for="x-max-angle">°</label>
+            <input id="x-max-angle" type="text" v-model.number="xMaxAngle">
+            <p>°</p>
+        </div>
     </div>
 </template>
 
 <style>
 #arspc-container {
-    padding: 2mm;
-    gap: 2mm;
-    background-color: var(--color-bg-9);
-    /* border: 2px solid var(--color-bg-9); */
-    border-radius: 3mm;
-    display: grid;
+    grid-row: 1 / 3;
     grid-template-columns: 1fr auto auto;
     grid-template-rows: auto 1fr auto;
-    grid-auto-columns: auto;
-    transition: 0.3s;
-    filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.1))
 }
 
-#arspc-container:hover {
-    /* background:
-        linear-gradient(var(--color-bg-9), var(--color-bg-9)) padding-box,
-        linear-gradient(-45deg, rgba(240, 249, 33, 1) 0%, rgba(253, 153, 39, 1) 20%, rgba(223, 55, 83, 1) 40%, rgba(158, 6, 152, 1) 60%, rgba(83, 1, 168, 1) 80%, rgba(13, 8, 135, 1) 100%) border-box;
-    border: 2px solid transparent; */
-    filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.2))
-}
-
-/* #arspc-container:hover::after {
-    content: '●';
-    color: rgb(253, 153, 39);
-    align-self: self-end;
-    font-size: 3mm;
-    grid-row: 3 / 4;
-    grid-column: 1 / 2;
-} */
-
-#heatmap-placeholder,
-#ar-spectrum {
+#ar-spectral-box {
     background-color: white;
-    width: 12cm;
-    height: 16cm;
+    max-width: 12cm;
+    max-height: 16cm;
     border-radius: 1mm;
     grid-row: 2 / 3;
     grid-column: 1 / 4;
     align-self: center;
+    overflow: auto;
 }
 
-.v-enter-active,
-.v-leave-active {
-    transition: all 0.3s ease;
-}
-
-.v-enter-from,
-.v-leave-to {
-    opacity: 0;
-    transform: translateX(-10px);
+#heatmap-placeholder,
+#ar-spectral {
+    background-color: white;
+    width: 12cm;
+    height: 16cm;
 }
 
 #arspc-options {
-    display: flex;
-    grid-row: 2 / 3;
-    grid-column: 4 / 5;
-    flex-direction: column;
-    padding: 0px 1mm;
+    padding: 2mm 4mm;
     justify-content: left;
+    align-content: center;
     gap: 1mm;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .range-input-lambda,
