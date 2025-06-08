@@ -63,10 +63,12 @@ function copyToClipboard() {
 </script>
 
 <template>
-    <div id="spec-container">
-        <div ref="spec" id="spectrum"></div>
+    <div id="spec-container" class="container">
+        <div id="spectral-box">
+            <div ref="spec" id="spectral"></div>
+        </div>
         <div id="slice-index-input">
-            <label for="slice-index">横轴索引</label>
+            <label for="slice-index">角度索引</label>
             <input v-if="prop.data" type="range" :min="0" :max="prop.data.height - 1" v-model.number="sliceIndex">
             <input id="slice-index" type="number" v-model.number="sliceIndex">
         </div>
@@ -84,34 +86,26 @@ function copyToClipboard() {
 
 <style>
 #spec-container {
-    padding: 2mm;
-    gap: 2mm;
-    background-color: var(--color-bg-9);
-    /* border: 2px solid var(--color-bg-9); */
-    border-radius: 3mm;
-    display: grid;
+    grid-column: -2 / -1;
+    grid-row: 2 / 3;
     grid-template-rows: 1fr auto;
     grid-template-columns: auto 1fr auto auto;
-    transition: 0.3s;
-    filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.1))
 }
 
-#spec-container:hover {
-    /* background: 
-        linear-gradient(var(--color-bg-9), var(--color-bg-9)) padding-box,
-        linear-gradient(-45deg, rgba(240,249,33,1) 0%, rgba(253,153,39,1) 20%, rgba(223,55,83,1) 40%, rgba(158,6,152,1) 60%, rgba(83,1,168,1) 80%, rgba(13,8,135,1) 100%) border-box;
-    border: 2px solid transparent; */
-    filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.2))
-}
-
-#spectrum {
-    width: 16cm;
-    height: 12cm;
+#spectral-box {
+    max-width: 16cm;
+    max-height: 12cm;
     background-color: white;
     border-radius: 1mm;
     grid-column: 1 / -1;
-    justify-self: center;
     align-self: center;
+    overflow: auto;
+}
+
+#spectral {
+    width: 16cm;
+    height: 12cm;
+    background-color: white;
 }
 
 #slice-index-input {

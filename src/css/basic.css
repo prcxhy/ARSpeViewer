@@ -34,13 +34,14 @@ p, label {
     margin: 0px;
     font-size: 3.6mm;
     text-wrap: nowrap;
-    max-width: 11cm;
+    max-width: 12cm;
     text-overflow: ellipsis;
     align-content: center;
 }
 
 h3 {
-    margin: 4mm 0px 0px 4mm;
+    margin: 0px;
+    padding: 1cm 0px 0px 1cm;
     justify-content: center;
     color: rgb(96, 96, 96);
     user-select: none;
@@ -60,7 +61,7 @@ input[type="text"] {
     border-width: 0px;
     outline-width: 0px;
     max-width: 12mm;
-    height: 6mm;
+    height: 5.4mm;
 }
 
 input[type="number"]:focus,
@@ -73,6 +74,7 @@ input[type="text"]:focus {
     background-color: var(--color-bg-9);
     position: relative;
     padding: 2mm 3mm 2mm 2mm;
+    border: 1px solid var(--color-bg-10);
     border-radius: 2mm;
     top: 2mm;
     font-size: 3.6mm;
@@ -93,7 +95,7 @@ button {
     padding: 1mm;
     display: flex;
     background-color: transparent;
-    border-width: 0px;
+    border: 1px solid transparent;
     border-radius: 1mm;
     height: 7mm;
     gap: 1mm;
@@ -110,22 +112,54 @@ button > svg {
 }
 
 button:hover {
+    border: 1px solid var(--color-bg-10);
     background-color: var(--color-bg-9);
     filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.2));
-
 }
 
 button:active {
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: var(--color-bg-10);
+    border: 1px solid var(--color-bg-10);
+    filter: drop-shadow(0px 0px 8px var(--color-bg-10));
+}
+
+button:active > svg {
+    filter:brightness(0.8);
 }
 
 #content {
     display: grid;
     grid-template-columns: repeat(2, auto);
+    grid-template-rows: repeat(2, auto);
     padding: 3mm;
     gap: 3mm;
     transition: 0.5s;
     width: 100%;
-    justify-content: space-around;
-    overflow: auto;
+    justify-content: center;
+    overflow: hidden;
+    border-left: 1px solid var(--color-bg-9);
+}
+
+.container {
+    padding: 2mm;
+    gap: 2mm;
+    background-color: transparent;
+    border: 1px solid var(--color-bg-7);
+    border-radius: 3mm;
+    display: grid;
+    transition: 0.5s;
+}
+
+#spec-container:hover,
+.container-focus {
+    background-color: var(--color-bg-9);
+    border: 1px solid var(--color-bg-10);
+    filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.2))
+}
+
+#spec-container:active,
+#spec-container:focus-within,
+.container-focus:active,
+.container-focus:focus-within {
+    filter: drop-shadow(0px 0px 8px var(--color-bg-10));
 }
