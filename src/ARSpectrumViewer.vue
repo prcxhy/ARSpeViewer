@@ -32,8 +32,6 @@ const emit = defineEmits(['show-message', 'slice-at-index']);
 
 const xMinIndex = ref();
 const xMaxIndex = ref();
-const xMinAngle = ref();
-const xMaxAngle = ref();
 
 const yAxisMode = ref(true);
 const yMinLambda = ref();
@@ -101,22 +99,17 @@ watch(() => prop.data, newData => {
     })
 }, { immediate: true });
 
-const xAxisIsTan = computed(() => {
-    let yes = xMinAngle.value < xMaxAngle.value
-        && xMinAngle.value != undefined
-        && xMaxAngle.value != undefined
-        && xMinAngle.value != ''
-        && xMaxAngle.value != ''
-    return yes
-})
+const bindingNA = ref();
 
-watch(xAxisIsTan, isTan => {
+watch(bindingNA, newVal => {
+    let inputed = newVal && newVal != '';
     let xAxisOptions = (chart1.getOption().xAxis as { [key: string]: any }[]);
-    xAxisOptions[1].show = !isTan;
-    xAxisOptions[2].show = isTan;
-    if (isTan) {
-        xAxisOptions[2].min = Math.tan(xMinAngle.value / 180 * Math.PI);
-        xAxisOptions[2].max = Math.tan(xMaxAngle.value / 180 * Math.PI);
+    xAxisOptions[1].show = !inputed;
+    xAxisOptions[2].show = inputed;
+    if (inputed) {
+        let tan = Math.tan(Math.asin(newVal));
+        xAxisOptions[2].min = -tan;
+        xAxisOptions[2].max = tan;
     }
     chart1.setOption({
         xAxis: xAxisOptions
@@ -149,22 +142,6 @@ watch(xMaxIndex, newIndex => {
         dataZoomIndex: 2,
         endValue: newIndex,
     });
-});
-
-watch(xMinAngle, newAngle => {
-    if (xAxisIsTan.value) {
-        let xAxisOptions = (chart1.getOption().xAxis as { [key: string]: any }[]);
-        xAxisOptions[2].min = Math.tan(newAngle / 180 * Math.PI);
-        chart1.setOption({ xAxis: xAxisOptions });
-    }
-});
-
-watch(xMaxAngle, newAngle => {
-    if (xAxisIsTan.value) {
-        let xAxisOptions = (chart1.getOption().xAxis as { [key: string]: any }[]);
-        xAxisOptions[2].max = Math.tan(newAngle / 180 * Math.PI);
-        chart1.setOption({ xAxis: xAxisOptions });
-    }
 });
 
 watch(yMinIndex, newIndex => {
@@ -230,9 +207,8 @@ function resetXRange() {
     xMinIndex.value = 0;
     xMaxIndex.value = prop.data!.height - 1;
 }
-function resetXBinding() {
-    xMinAngle.value = '';
-    xMaxAngle.value = '';
+function resetNABinding() {
+    bindingNA.value = '';
 }
 
 function copyToClipboard() {
@@ -241,20 +217,19 @@ function copyToClipboard() {
     emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格');
     let str = '';
     if (prop.data!.wavelength) {
-        str = `${xAxisIsTan.value ? 'tan(θ)' : 'Index'}\t${yAxisMode.value ? 'Wavelength' : 'Energy'}\tcounts
+        str = `${bindingNA.value ? 'tan(θ)' : 'Index'}\t${yAxisMode.value ? 'Wavelength' : 'Energy'}\tcounts
                 \t${yAxisMode.value ? 'nm' : 'eV'}\n\n`;
     } else {
-        str = `${xAxisIsTan.value ? 'tan(θ)' : 'Index'}\t\tcounts\n\n\n`;
+        str = `${bindingNA.value ? 'tan(θ)' : 'Index'}\t\tcounts\n\n\n`;
     }
 
     let key = Object.keys(prop.data!.frame[0])[0];
-    if (xAxisIsTan.value) {
-        let minTan = Math.tan(xMinAngle.value / 180 * Math.PI);
-        let maxTan = Math.tan(xMaxAngle.value / 180 * Math.PI);
+    if (bindingNA.value) {
+        let tan = Math.tan(Math.asin(bindingNA.value));
         let height = xMaxIndex.value - xMinIndex.value + 1;
-        let d = (maxTan - minTan) / (height - 1);
+        let d = 2 * tan / (height - 1);
         for (var a = 0; a < height; a++) {
-            str += `\t${minTan + a * d}`;
+            str += `\t${-tan + a * d}`;
         }
     } else {
         for (var b = xMinIndex.value; b <= xMaxIndex.value; b++) {
@@ -335,14 +310,11 @@ function copyToClipboard() {
             <label for="x-max-index">~</label>
             <input id="x-max-index" type="number" v-model.number="xMaxIndex">
             <p>(索引)</p>
-            <label for="x-min-angle" style="grid-column-start: 1">横轴绑定</label>
-            <button @click="resetXBinding" title="重置">
+            <label for="binding-na" style="grid-column-start: 1">NA 绑定</label>
+            <button @click="resetNABinding" title="重置">
                 <IconReset />
             </button>
-            <input id="x-min-angle" type="text" v-model.number="xMinAngle">
-            <label for="x-max-angle">°</label>
-            <input id="x-max-angle" type="text" v-model.number="xMaxAngle">
-            <p>°</p>
+            <input id="binding-na" type="text" v-model.number="bindingNA">
         </div>
     </div>
 </template>
