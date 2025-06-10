@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, nextTick, Ref, useTemplateRef, watch } from 'vue';
+import { inject, nextTick, onMounted, Ref, useTemplateRef, watch } from 'vue';
 import IconCopy from './assets/clipboard.svg?component';
 import IconExport from './assets/down-picture.svg?component';
 import { drawSpec, saveImage, SpeData } from './scripts/DataViewer';
@@ -18,25 +18,18 @@ const spec = useTemplateRef('spec');
 const sliceIndex = defineModel<number>({ default: 0 });
 
 watch(() => prop.data, newData => {
-    if (chart2) {
-        chart2.dispose();
-    }
-    nextTick().then(() => {
-        chart2 = echarts.init(spec.value! as HTMLDivElement);
+    nextTick(() => {       
         if (newData) {
+            sliceIndex.value = Math.min(sliceIndex.value, newData.height - 1);
             drawSpec(chart2, newData, sliceIndex.value, prop.name);
         }
     })
 }, { immediate: true });
 
 watch(sliceIndex, newIndex => {
-    if (chart2) {
-        chart2.dispose();
-    }
-    nextTick().then(() => {
+    nextTick(() => {
         if (prop.data) {
-            chart2 = echarts.init(spec.value! as HTMLDivElement);
-            drawSpec(chart2, prop.data, newIndex, prop.name);
+            drawSpec(chart2, prop.data!, newIndex, prop.name);
         }
     })
 }, { immediate: true });
@@ -60,6 +53,10 @@ function copyToClipboard() {
     }
     writeText(str);
 }
+
+onMounted(() => {
+    chart2 = echarts.init(spec.value! as HTMLDivElement);
+})
 </script>
 
 <template>

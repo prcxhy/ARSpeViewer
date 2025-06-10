@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, Ref, ref, useTemplateRef, watch } from 'vue';
 import * as echarts from 'echarts';
-import { downSampling, drawARSpec, SpeData, saveImage, CONST_1240 } from './scripts/DataViewer';
+import { downSampling, drawARSpec, SpeData, saveImage, CONST_1240, compatible} from './scripts/DataViewer';
 import ModeSwitch from './components/ModeSwitch.vue';
 import IconCopy from './assets/clipboard.svg?component';
 import IconExport from './assets/down-picture.svg?component';
@@ -82,19 +82,35 @@ onMounted(() => {
     })
 })
 
-watch(() => prop.data, newData => {
+watch(() => prop.data, (newData, oldData) => {
     nextTick(() => {
         if (newData) {
-            drawARSpec(chart1, dataSnapshot.value!, {
-                name: prop.name,
-                yMin: 0, yMax: prop.data!.width - 1,
-                xMin: 0, xMax: prop.data!.height - 1
-            });
-            yAxisMode.value = true;
-            xMinIndex.value = 0;
-            xMaxIndex.value = newData!.height - 1;
-            yMinLambda.value = newData!.wavelength ? newData!.wavelength[0] : 0;
-            yMaxLambda.value = newData!.wavelength ? newData!.wavelength[newData!.width - 1] : newData!.width - 1;
+            if (!oldData) {
+                drawARSpec(chart1, dataSnapshot.value!, {
+                    name: prop.name,
+                    yMin: 0, yMax: prop.data!.width - 1,
+                    xMin: 0, xMax: prop.data!.height - 1
+                });
+                yAxisMode.value = true;
+                xMinIndex.value = 0;
+                xMaxIndex.value = newData!.height - 1;
+                yMinLambda.value = newData!.wavelength ? newData!.wavelength[0] : 0;
+                yMaxLambda.value = newData!.wavelength ? newData!.wavelength[newData!.width - 1] : newData!.width - 1;
+                bindingNA.value = '';
+            } else {
+                let info = compatible(newData, oldData, xMinIndex.value, xMaxIndex.value, yMinLambda.value, yMaxLambda.value);
+                drawARSpec(chart1, dataSnapshot.value!, {
+                    name: prop.name,
+                    ...info
+                });
+                if (!(newData.wavelength && oldData.wavelength)) {
+                    yAxisMode.value = true;
+                }
+                xMinIndex.value = info.xMin;
+                xMaxIndex.value = info.xMax;
+                yMinLambda.value = info.yMin;
+                yMaxLambda.value = info.yMax;
+            }
         }
     })
 }, { immediate: true });
