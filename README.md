@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="./src-tauri/icons/icon.png" alt="Clash" width="128" />
+  <img src="./src-tauri/icons/icon.png" alt="ARSpeViewer" width="128" />
   <br>
   <!-- <a href="https://github.com/prcxhy/ARSpeViewer">ARSpeViewer</a> -->
   ARSpeViewer
