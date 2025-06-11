@@ -198,53 +198,111 @@ fn parse_spe(data_vec: Vec<u8>) -> String {
     return serde_json::to_string(&spe_data).unwrap();
 }
 
-fn parse_txt(data_text: String) -> String {
+fn parse_txt(data_text: String) -> Result<String, String> {
     let mut spe_data = SpeData::init();
 
     let rows: Vec<&str> = data_text.trim().split_terminator('\n').collect();
-    spe_data.width = rows.len();
 
-    let (lambda_str, counts_str) = rows[0].trim()
-        .split_once(&['\t', ',', ';', ' '][..])
-        .unwrap();
+    let mut data_start_index: usize = 0;
+    let mut row_major = true;
+    let mut wavelength: Vec<f64> = Vec::new();
+    let mut counts_rows: Vec<Vec<i32>> = Vec::new();
 
-    let mut wavelength = vec![lambda_str.parse::<f64>().unwrap()];
-
-    let mut counts_rows = counts_str
-        .split_terminator(&['\t', ',', ';', ' '][..])
-        .map(|number_str| vec![number_str.parse::<i32>().unwrap()])
-        .collect::<Vec<Vec<i32>>>();
-    spe_data.height = counts_rows.len();
-
-    rows[1..].iter().for_each(|row| {
-        // let number_str_vec = str.split_terminator(&['\t', ',', ';', ' '][..]).collect::<Vec<&str>>();
-        // number_str_vec.par_iter().enumerate().for_each(|(index, number_str)| {
-        (*row).trim()
-            .split_terminator(&['\t', ',', ';', ' '][..])
-            .enumerate()
-            .for_each(|(index, number_str)| {
-                // let n = *number_str;
-                if index == 0 {
-                    wavelength.push(number_str.parse::<f64>().unwrap())
-                } else {
-                    counts_rows[index - 1].push(number_str.parse::<i32>().unwrap())
+    for i in 0..rows.len() {
+        if let Some((str_1, str_2)) = rows[i].trim().split_once(&['\t', ',', ';', ' '][..]) {
+            if let Ok(lambda_start) = str_1.parse::<f64>() {
+                let str_2_vec = str_2
+                    .split_terminator(&['\t', ',', ';', ' '][..])
+                    .collect::<Vec<&str>>();
+                // 通过拆分长度判断是否是数据开始行
+                if str_2_vec.len() < 100 {
+                    continue;
                 }
-            });
-    });
+                wavelength.push(lambda_start);
+                // 首行尾不是浮点数则说明波长在首列，数据按列存储
+                if let Ok(_) = str_2_vec.last().unwrap().parse::<i32>() {
+                    println!("wavelength is the first column");
+                    row_major = false;
+                    spe_data.height = str_2_vec.len();
+                    spe_data.width = 1;
+                    str_2_vec.into_iter().for_each(|number_str| {
+                        counts_rows.push(vec![number_str.parse::<i32>().unwrap()])
+                    });
+                } else {
+                    println!("wavelength is the first row");
+                    spe_data.width = str_2_vec.len() + 1;
+                    str_2_vec.into_iter().for_each(|str| {
+                        wavelength.push(str.parse::<f64>().unwrap());
+                    });
+                }
+                data_start_index = i + 1;
+                break;
+            }
+        }
+    }
 
-    let counts_data = counts_rows.into_iter().flatten().collect::<Vec<i32>>();
+    if data_start_index == 0 {
+        return Err("未能解析到有效数据".to_string());
+    }
+
+    let mut frame_data: Vec<i32> = Vec::new();
+
+    if row_major {
+        for i in data_start_index..rows.len() {
+            let number_strings = rows[i]
+                .trim()
+                .split_terminator(&['\t', ',', ';', ' '][..])
+                .collect::<Vec<&str>>();
+            if number_strings.len() == spe_data.width {
+                number_strings.into_iter().for_each(|str| {
+                    frame_data.push(str.parse::<i32>().unwrap());
+                });
+                spe_data.height += 1;
+            } else {
+                break;
+            }
+        }
+    } else {
+        for i in data_start_index..rows.len() {
+            let number_strings = rows[i]
+                .trim()
+                .split_terminator(&['\t', ',', ';', ' '][..])
+                .collect::<Vec<&str>>();
+            if number_strings.len() == spe_data.height + 1 {
+                number_strings
+                    .into_iter()
+                    .enumerate()
+                    .for_each(|(index, number_str)| {
+                        if index == 0 {
+                            wavelength.push(number_str.parse::<f64>().unwrap())
+                        } else {
+                            counts_rows[index - 1].push(number_str.parse::<i32>().unwrap())
+                        }
+                    });
+                spe_data.width += 1;
+            } else {
+                break;
+            }
+        }
+        frame_data = counts_rows.into_iter().flatten().collect::<Vec<i32>>();
+    }
 
     spe_data.wavelength = Some(wavelength);
-    spe_data.frame = vec![FrameVec::I32FRAME(counts_data)];
+    spe_data.frame = vec![FrameVec::I32FRAME(frame_data)];
     spe_data.calc_maxs_mins();
 
-    return serde_json::to_string(&spe_data).unwrap();
+    return Ok(serde_json::to_string(&spe_data).unwrap());
 }
 
 #[tauri::command]
 pub fn open_file(path: String) -> Result<String, String> {
     let path_buf = PathBuf::from(path);
-    match path_buf.extension().unwrap().to_str() {
+    let extention = if let Some(ext) = path_buf.extension() {
+        ext.to_str()
+    } else {
+        None
+    };
+    match extention {
         Some("spe") => {
             let data = fs::read(path_buf);
             if let Ok(data_vec) = data {
@@ -256,11 +314,11 @@ pub fn open_file(path: String) -> Result<String, String> {
         Some(_) => {
             let data = fs::read_to_string(path_buf);
             if let Ok(data_text) = data {
-                Ok(parse_txt(data_text))
+                parse_txt(data_text)
             } else {
                 Err(String::from("未知的文件格式"))
             }
         }
-        None => Err(String::from("未知的文件格式")),
+        None => Err(String::from("尚不支持打开文件夹")),
     }
 }

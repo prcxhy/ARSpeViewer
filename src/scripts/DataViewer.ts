@@ -9,8 +9,8 @@ const e = 1.602176634e-19;
 const CONST_1240 = H * C0 * 1e9 / e;
 
 class SpeData {
-    min_max: {[key: string]: number[]}[];
-    frame: {[key: string]: number[]}[];
+    min_max: { [key: string]: number[] }[];
+    frame: { [key: string]: number[] }[];
     width: number;
     height: number;
     wavelength: number[] | null;
@@ -21,8 +21,8 @@ class SpeData {
     focal_length_exp: number;
     inclusion_angle_exp: number;
     constructor(
-        min_max: {[key: string]: number[]}[],
-        frame: {[key: string]: number[]}[],
+        min_max: { [key: string]: number[] }[],
+        frame: { [key: string]: number[] }[],
         width: number,
         height: number,
         wavelength: number[] | null,
@@ -56,12 +56,12 @@ function downSampling(speData: SpeData, stride: number): SpeData {
     let snapshot = { ...speData };
     snapshot.width = Math.ceil(speData.width / stride);
     snapshot.height = Math.ceil(speData.height / stride);
-    if(speData.wavelength) {
+    if (speData.wavelength) {
         snapshot.wavelength = [];
         for (var i = 0; i < speData.width; i += stride) {
             snapshot.wavelength.push(speData.wavelength[i]);
         }
-    } 
+    }
     snapshot.frame = speData.frame.map(oneFrame => {
         let key: string = Object.keys(oneFrame)[0];
         let newFrame: number[] = [];
@@ -70,35 +70,24 @@ function downSampling(speData: SpeData, stride: number): SpeData {
                 newFrame.push(oneFrame[key][i * speData.width + j]);
             }
         }
-        let result: {[key: string]: number[]} = {};
+        let result: { [key: string]: number[] } = {};
         result[key] = newFrame;
         return result;
     })
     return snapshot;
 }
 
-async function drawARSpec(
-    chart: ECharts, speData: SpeData,
+function initARSpec(
+    chart: ECharts, speData: SpeData, xData: number[], yData: number[] | null, data: number[][],
     info: {
         name: string,
         yMin: number, yMax: number,
-        xMin: number, xMax: number
+        xMin: number, xMax: number,
+        zMin: number, zMax: number
     }) {
-    let key = Object.keys(speData.frame[0])[0];
 
-    let data: number[][] = [];
-    let xLength = speData.height;
     let yLength = speData.width;
-    let xData = Array.from({ length: xLength }, (_, i) => i);
-    let yData = speData.wavelength;
-    let zMin = speData.min_max[0][key][0];
-    let zMax = speData.min_max[0][key][1];
 
-    for (var j = 0; j < yLength; j++) {
-        for (var i = 0; i < xLength; i++) {
-            data.push([i, j, speData.frame[0][key][i * yLength + j]])
-        }
-    }
     chart.setOption({
         title: {
             text: info.name, left: 'center', top: 7,
@@ -205,7 +194,7 @@ async function drawARSpec(
                 show: false,
                 type: 'value',
                 position: 'left',
-                min: yData ? CONST_1240 / yData[yLength - 1]: 0,
+                min: yData ? CONST_1240 / yData[yLength - 1] : 0,
                 max: yData ? CONST_1240 / yData[0] : yLength - 1,
                 nameLocation: 'center', nameGap: 42,
                 name: "Energy (eV)", nameTextStyle: {
@@ -244,8 +233,8 @@ async function drawARSpec(
             show: false
         }],
         visualMap: {
-            min: zMin,
-            max: zMax,
+            min: info.zMin,
+            max: info.zMax,
             calculable: true,
             realtime: false,
             textStyle: {
@@ -297,16 +286,55 @@ async function drawARSpec(
         ]
     })
 }
-async function drawSpec(chart: ECharts, speData: SpeData, index: number, name: string) {
-    let key = Object.keys(speData.min_max[0])[0];
-    let data: number[][] = []
-    for(var j = 0; j < speData.width; j++) {
-        if(speData.wavelength) {
-            data.push([speData.wavelength[j], speData.frame[0][key][index * speData.width + j]]);
-        } else {
-            data.push([j, speData.frame[0][key][index * speData.width + j]]);
+
+async function drawARSpec(
+    chart: ECharts, speData: SpeData,
+    info: {
+        name: string,
+        yMin: number, yMax: number,
+        xMin: number, xMax: number
+    }
+) {
+    let key = Object.keys(speData.frame[0])[0];
+
+    let data: number[][] = [];
+    let xLength = speData.height;
+    let yLength = speData.width;
+    let xData = Array.from({ length: xLength }, (_, i) => i);
+    let yData = speData.wavelength;
+    let zMin = speData.min_max[0][key][0];
+    let zMax = speData.min_max[0][key][1];
+
+    for (var j = 0; j < yLength; j++) {
+        for (var i = 0; i < xLength; i++) {
+            data.push([i, j, speData.frame[0][key][i * yLength + j]])
         }
     }
+
+    let option = chart.getOption();
+    
+    if (option) {
+        (option.title as {[key: string]: any}[])[0].text = info.name;
+        (option.xAxis as {[key: string]: any}[])[0].data = xData;
+        (option.xAxis as {[key: string]: any}[])[1].min = info.xMin;
+        (option.xAxis as {[key: string]: any}[])[1].max = info.xMax;
+        (option.yAxis as {[key: string]: any}[])[0].data = yData;
+        (option.yAxis as {[key: string]: any}[])[1].min = yData ? yData[0] : info.yMin;
+        (option.yAxis as {[key: string]: any}[])[1].max = yData ? yData[yLength - 1] : info.yMax;
+        (option.yAxis as {[key: string]: any}[])[1].name = yData ? "Wavelength (nm)" : "Index";
+        (option.yAxis as {[key: string]: any}[])[2].min = yData ? CONST_1240 / yData[yLength - 1] : 0;
+        (option.yAxis as {[key: string]: any}[])[2].max = yData ? CONST_1240 / yData[0] : yLength - 1;
+        (option.visualMap as {[key: string]: any}[])[0].min = zMin;
+        (option.visualMap as {[key: string]: any}[])[0].max = zMax;
+        (option.visualMap as {[key: string]: any}[])[0].range = [zMin, zMax];
+        (option.series as {[key: string]: any}[])[0].data = data;
+        chart.setOption(option);
+    } else {
+        initARSpec(chart, speData, xData, yData, data, {...info, zMin: zMin, zMax: zMax});
+    }
+}
+
+function initSpec(chart: ECharts, name: string, speData: SpeData, data: number[][]) {   
     chart.setOption({
         animation: false,
         tooltip: {
@@ -363,11 +391,35 @@ async function drawSpec(chart: ECharts, speData: SpeData, index: number, name: s
             symbol: 'none', lineStyle: { width: 3 }
         }
     })
+    
+}
 
+async function drawSpec(chart: ECharts, speData: SpeData, index: number, name: string) {
+    let key = Object.keys(speData.min_max[0])[0];
+    let data: number[][] = []
+    for (var j = 0; j < speData.width; j++) {
+        if (speData.wavelength) {
+            data.push([speData.wavelength[j], speData.frame[0][key][index * speData.width + j]]);
+        } else {
+            data.push([j, speData.frame[0][key][index * speData.width + j]]);
+        }
+    }
+    let option = chart.getOption();
+
+    if (option) {
+        (option.xAxis as {[key: string]: any}[])[0].min = speData.wavelength ? speData.wavelength[0] : 0;
+        (option.xAxis as {[key: string]: any}[])[0].max = speData.wavelength ? speData.wavelength[speData.width - 1] : speData.width - 1;
+        (option.xAxis as {[key: string]: any}[])[0].name = speData.wavelength ? "Wavelength (nm)" : "Index";
+        (option.series as {[key: string]: any}[])[0].name = name;
+        (option.series as {[key: string]: any}[])[0].data = data;
+        chart.setOption(option);
+    } else {
+        initSpec(chart, name, speData, data);
+    }
 }
 
 async function saveImage(chart: echarts.ECharts, name: string, isntDrawn: boolean, silentPath: string | undefined) {
-    if(isntDrawn) { return }
+    if (isntDrawn) { return }
     let savePath = silentPath ? await path.join(silentPath, `${name}.png`) : await save({
         defaultPath: name,
         filters: [{
@@ -375,7 +427,7 @@ async function saveImage(chart: echarts.ECharts, name: string, isntDrawn: boolea
             extensions: ['png'],
         }]
     })
-    if(savePath) {
+    if (savePath) {
         let url = chart.getDataURL({
             type: 'png',
             pixelRatio: 3,
@@ -391,4 +443,40 @@ async function saveImage(chart: echarts.ECharts, name: string, isntDrawn: boolea
     }
 }
 
-export { CONST_1240, SpeData, downSampling, drawARSpec, drawSpec, saveImage }
+function compatible(newSpe: SpeData, oldSpe: SpeData, xMin: number, xMax: number, yMin: number, yMax: number) {
+    let info: {
+        yMin: number, yMax: number,
+        xMin: number, xMax: number
+    } = {
+        yMin: 0, yMax: 0,
+        xMin: 0, xMax: newSpe.height - 1
+    };
+    if (newSpe.wavelength && oldSpe.wavelength &&
+        !(yMin >= newSpe.wavelength[newSpe.width - 1] || yMax <= newSpe.wavelength[0])) {
+        let bandwidth = newSpe.wavelength[newSpe.width - 1] - newSpe.wavelength[0];
+        if ((Math.abs(newSpe.wavelength[0] - oldSpe.wavelength[0]) <= bandwidth / 10) &&
+        (Math.abs(newSpe.wavelength[newSpe.width - 1] - oldSpe.wavelength[oldSpe.width - 1]) <= bandwidth / 10)) {
+            info.yMin = Math.max(yMin, newSpe.wavelength[0]);
+            info.yMax = Math.min(yMax, newSpe.wavelength[newSpe.width - 1]);
+        } else {
+            info.yMin = newSpe.wavelength[0];
+            info.yMax = newSpe.wavelength[newSpe.width - 1];
+        }
+    } else if ((!newSpe.wavelength && !oldSpe.wavelength) && newSpe.width == oldSpe.width) {
+        info.yMin = yMin;
+        info.yMax = yMax;
+    } else if (!newSpe.wavelength) {
+        info.yMin = 0;
+        info.yMax = newSpe.width - 1;
+    } else {
+        info.yMin = newSpe.wavelength[0];
+        info.yMax = newSpe.wavelength[newSpe.width - 1];
+    }
+    if (newSpe.height == oldSpe.height) {
+        info.xMin = xMin;
+        info.xMax = xMax;
+    }
+    return info;
+}
+
+export { CONST_1240, SpeData, downSampling, drawARSpec, drawSpec, saveImage, compatible }

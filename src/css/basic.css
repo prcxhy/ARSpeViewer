@@ -85,9 +85,16 @@ input[type="text"]:focus {
     overflow: hidden;
 }
 
-.message::before {
+.ok::before {
     content: '●';
     color: rgba(59, 209, 39, 0.5);
+    margin-right: 2mm;
+}
+
+.error::before {
+    content: '×';
+    font-weight: bold;
+    color: rgb(255, 88, 88);
     margin-right: 2mm;
 }
 

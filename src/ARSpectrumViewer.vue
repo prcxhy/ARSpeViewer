@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, Ref, ref, useTemplateRef, watch } from 'vue';
 import * as echarts from 'echarts';
-import { downSampling, drawARSpec, SpeData, saveImage, CONST_1240 } from './scripts/DataViewer';
+import { downSampling, drawARSpec, SpeData, saveImage, CONST_1240, compatible} from './scripts/DataViewer';
 import ModeSwitch from './components/ModeSwitch.vue';
 import IconCopy from './assets/clipboard.svg?component';
 import IconExport from './assets/down-picture.svg?component';
@@ -32,8 +32,6 @@ const emit = defineEmits(['show-message', 'slice-at-index']);
 
 const xMinIndex = ref();
 const xMaxIndex = ref();
-const xMinAngle = ref();
-const xMaxAngle = ref();
 
 const yAxisMode = ref(true);
 const yMinLambda = ref();
@@ -84,39 +82,50 @@ onMounted(() => {
     })
 })
 
-watch(() => prop.data, newData => {
+watch(() => prop.data, (newData, oldData) => {
     nextTick(() => {
         if (newData) {
-            drawARSpec(chart1, dataSnapshot.value!, {
-                name: prop.name,
-                yMin: 0, yMax: prop.data!.width - 1,
-                xMin: 0, xMax: prop.data!.height - 1
-            });
-            yAxisMode.value = true;
-            xMinIndex.value = 0;
-            xMaxIndex.value = newData!.height - 1;
-            yMinLambda.value = newData!.wavelength ? newData!.wavelength[0] : 0;
-            yMaxLambda.value = newData!.wavelength ? newData!.wavelength[newData!.width - 1] : newData!.width - 1;
+            if (!oldData) {
+                drawARSpec(chart1, dataSnapshot.value!, {
+                    name: prop.name,
+                    yMin: 0, yMax: prop.data!.width - 1,
+                    xMin: 0, xMax: prop.data!.height - 1
+                });
+                yAxisMode.value = true;
+                xMinIndex.value = 0;
+                xMaxIndex.value = newData!.height - 1;
+                yMinLambda.value = newData!.wavelength ? newData!.wavelength[0] : 0;
+                yMaxLambda.value = newData!.wavelength ? newData!.wavelength[newData!.width - 1] : newData!.width - 1;
+                bindingNA.value = '';
+            } else {
+                let info = compatible(newData, oldData, xMinIndex.value, xMaxIndex.value, yMinLambda.value, yMaxLambda.value);
+                drawARSpec(chart1, dataSnapshot.value!, {
+                    name: prop.name,
+                    ...info
+                });
+                if (!(newData.wavelength && oldData.wavelength)) {
+                    yAxisMode.value = true;
+                }
+                xMinIndex.value = info.xMin;
+                xMaxIndex.value = info.xMax;
+                yMinLambda.value = info.yMin;
+                yMaxLambda.value = info.yMax;
+            }
         }
     })
 }, { immediate: true });
 
-const xAxisIsTan = computed(() => {
-    let yes = xMinAngle.value < xMaxAngle.value
-        && xMinAngle.value != undefined
-        && xMaxAngle.value != undefined
-        && xMinAngle.value != ''
-        && xMaxAngle.value != ''
-    return yes
-})
+const bindingNA = ref();
 
-watch(xAxisIsTan, isTan => {
+watch(bindingNA, newVal => {
+    let inputed = newVal && newVal != '';
     let xAxisOptions = (chart1.getOption().xAxis as { [key: string]: any }[]);
-    xAxisOptions[1].show = !isTan;
-    xAxisOptions[2].show = isTan;
-    if (isTan) {
-        xAxisOptions[2].min = Math.tan(xMinAngle.value / 180 * Math.PI);
-        xAxisOptions[2].max = Math.tan(xMaxAngle.value / 180 * Math.PI);
+    xAxisOptions[1].show = !inputed;
+    xAxisOptions[2].show = inputed;
+    if (inputed) {
+        let tan = Math.tan(Math.asin(newVal));
+        xAxisOptions[2].min = -tan;
+        xAxisOptions[2].max = tan;
     }
     chart1.setOption({
         xAxis: xAxisOptions
@@ -149,22 +158,6 @@ watch(xMaxIndex, newIndex => {
         dataZoomIndex: 2,
         endValue: newIndex,
     });
-});
-
-watch(xMinAngle, newAngle => {
-    if (xAxisIsTan.value) {
-        let xAxisOptions = (chart1.getOption().xAxis as { [key: string]: any }[]);
-        xAxisOptions[2].min = Math.tan(newAngle / 180 * Math.PI);
-        chart1.setOption({ xAxis: xAxisOptions });
-    }
-});
-
-watch(xMaxAngle, newAngle => {
-    if (xAxisIsTan.value) {
-        let xAxisOptions = (chart1.getOption().xAxis as { [key: string]: any }[]);
-        xAxisOptions[2].max = Math.tan(newAngle / 180 * Math.PI);
-        chart1.setOption({ xAxis: xAxisOptions });
-    }
 });
 
 watch(yMinIndex, newIndex => {
@@ -230,31 +223,29 @@ function resetXRange() {
     xMinIndex.value = 0;
     xMaxIndex.value = prop.data!.height - 1;
 }
-function resetXBinding() {
-    xMinAngle.value = '';
-    xMaxAngle.value = '';
+function resetNABinding() {
+    bindingNA.value = '';
 }
 
 function copyToClipboard() {
     if (!prop.data) { return }
 
-    emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格');
+    emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格', 'ok');
     let str = '';
     if (prop.data!.wavelength) {
-        str = `${xAxisIsTan.value ? 'tan(θ)' : 'Index'}\t${yAxisMode.value ? 'Wavelength' : 'Energy'}\tcounts
+        str = `${bindingNA.value ? 'tan(θ)' : 'Index'}\t${yAxisMode.value ? 'Wavelength' : 'Energy'}\tcounts
                 \t${yAxisMode.value ? 'nm' : 'eV'}\n\n`;
     } else {
-        str = `${xAxisIsTan.value ? 'tan(θ)' : 'Index'}\t\tcounts\n\n\n`;
+        str = `${bindingNA.value ? 'tan(θ)' : 'Index'}\t\tcounts\n\n\n`;
     }
 
     let key = Object.keys(prop.data!.frame[0])[0];
-    if (xAxisIsTan.value) {
-        let minTan = Math.tan(xMinAngle.value / 180 * Math.PI);
-        let maxTan = Math.tan(xMaxAngle.value / 180 * Math.PI);
+    if (bindingNA.value) {
+        let tan = Math.tan(Math.asin(bindingNA.value));
         let height = xMaxIndex.value - xMinIndex.value + 1;
-        let d = (maxTan - minTan) / (height - 1);
+        let d = 2 * tan / (height - 1);
         for (var a = 0; a < height; a++) {
-            str += `\t${minTan + a * d}`;
+            str += `\t${-tan + a * d}`;
         }
     } else {
         for (var b = xMinIndex.value; b <= xMaxIndex.value; b++) {
@@ -300,7 +291,7 @@ function copyToClipboard() {
         </button>
         <button id="save-ar-spec" style="grid-column-start: 3;"
         @click="saveImage(chart1, `角分辨光谱-${prop.name}`, !prop.data, silentPath).then(msg => {
-            if (msg) { emit('show-message', msg) }
+            if (msg) { emit('show-message', msg, 'ok') }
         })" title="导出图片">
             <IconExport />
         </button>
@@ -335,14 +326,11 @@ function copyToClipboard() {
             <label for="x-max-index">~</label>
             <input id="x-max-index" type="number" v-model.number="xMaxIndex">
             <p>(索引)</p>
-            <label for="x-min-angle" style="grid-column-start: 1">横轴绑定</label>
-            <button @click="resetXBinding" title="重置">
+            <label for="binding-na" style="grid-column-start: 1">NA 绑定</label>
+            <button @click="resetNABinding" title="重置">
                 <IconReset />
             </button>
-            <input id="x-min-angle" type="text" v-model.number="xMinAngle">
-            <label for="x-max-angle">°</label>
-            <input id="x-max-angle" type="text" v-model.number="xMaxAngle">
-            <p>°</p>
+            <input id="binding-na" type="text" v-model.number="bindingNA">
         </div>
     </div>
 </template>
