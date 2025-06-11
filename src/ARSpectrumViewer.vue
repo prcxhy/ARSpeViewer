@@ -230,7 +230,7 @@ function resetNABinding() {
 function copyToClipboard() {
     if (!prop.data) { return }
 
-    emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格');
+    emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格', 'ok');
     let str = '';
     if (prop.data!.wavelength) {
         str = `${bindingNA.value ? 'tan(θ)' : 'Index'}\t${yAxisMode.value ? 'Wavelength' : 'Energy'}\tcounts
@@ -291,7 +291,7 @@ function copyToClipboard() {
         </button>
         <button id="save-ar-spec" style="grid-column-start: 3;"
         @click="saveImage(chart1, `角分辨光谱-${prop.name}`, !prop.data, silentPath).then(msg => {
-            if (msg) { emit('show-message', msg) }
+            if (msg) { emit('show-message', msg, 'ok') }
         })" title="导出图片">
             <IconExport />
         </button>

@@ -22,21 +22,26 @@ const sliceIndex = ref(0);
 const silentFlag = ref();
 provide('silentlySave', silentFlag);
 
-const MessageText = ref('');
+const messageText = ref('');
+const messageType = ref('ok')
 
-function showMessage(text: string) {
-  MessageText.value = text;
-  setTimeout(() => MessageText.value = '', 3000);
+function showMessage(text: string, type: 'ok' | 'error') {
+  messageText.value = text;
+  messageType.value = type;
+  setTimeout(() => messageText.value = '', 3000);
 }
 
 async function openFromPath(filePath: string) {
   let baseName = await path.basename(filePath);
-  fileName.value = baseName.substring(0, baseName.length - 4);
-
-  workingPath.value = filePath;
   invoke("open_file", { path: filePath })
-    .then((str) => {
+  .then((str) => {
+      fileName.value = baseName.substring(0, baseName.length - 4);
+    
+      workingPath.value = filePath;
+
       speData.value = JSON.parse(str as string) as SpeData;
+    }).catch((msg) => {
+      showMessage(msg, 'error');
     });
 }
 
@@ -75,15 +80,17 @@ function silentlySaveImage() {
 onMounted(async () => {
   let source = (await getMatches()).args.source.value;
   if (typeof source == 'string') {
-    if (['.spe', '.asc', '.txt', '.csv'].includes(source.substring(source.length - 4))) {
-      openFromPath(source);
-    }
+    openFromPath(source);
+    // if (['.spe', '.asc', '.txt', '.csv'].includes(source.substring(source.length - 4))) {
+    //   openFromPath(source);
+    // }
   }
   listen<{ [key: string]: any }>('tauri://drag-drop', event => {
     let filePath: string = event.payload.paths[0];
-    if (['.spe', '.asc', '.txt', '.csv'].includes(filePath.substring(filePath.length - 4))) {
-      openFromPath(filePath);
-    }
+    openFromPath(filePath);
+    // if (['.spe', '.asc', '.txt', '.csv'].includes(filePath.substring(filePath.length - 4))) {
+    //   openFromPath(filePath);
+    // }
   });
 })
 </script>
@@ -99,7 +106,7 @@ onMounted(async () => {
   </nav>
   <Teleport to="body">
     <Transition name="message">
-      <p ref="message" v-if="MessageText != ''" class="message">{{ MessageText }}</p>
+      <p ref="message" v-if="messageText != ''" :class="['message', messageType]">{{ messageText }}</p>
     </Transition>
   </Teleport>
   <div id="content" @dragover.prevent="" @drop="dropToOpen">

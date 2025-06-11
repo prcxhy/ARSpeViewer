@@ -39,7 +39,7 @@ const emit = defineEmits(['show-message']);
 function copyToClipboard() {
     if (!prop.data) { return }
 
-    emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格');
+    emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格', 'ok');
     let str = prop.data!.wavelength ? 'Wavelength\tcounts\nnm\n\n' : 'counts\n\n\n';
 
     let key = Object.keys(prop.data!.frame[0])[0];
@@ -74,7 +74,7 @@ onMounted(() => {
         </button>
         <button id="save-slice-spec" style="grid-column-start: 4;"
         @click="saveImage(chart2, `切片光谱-${prop.name}`, !prop.data, silentPath).then(msg => {
-            if (msg) { emit('show-message', msg) }
+            if (msg) { emit('show-message', msg, 'ok') }
         })" title="导出图片">
             <IconExport />
         </button>

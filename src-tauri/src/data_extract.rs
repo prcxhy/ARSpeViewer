@@ -297,7 +297,12 @@ fn parse_txt(data_text: String) -> Result<String, String> {
 #[tauri::command]
 pub fn open_file(path: String) -> Result<String, String> {
     let path_buf = PathBuf::from(path);
-    match path_buf.extension().unwrap().to_str() {
+    let extention = if let Some(ext) = path_buf.extension() {
+        ext.to_str()
+    } else {
+        None
+    };
+    match extention {
         Some("spe") => {
             let data = fs::read(path_buf);
             if let Ok(data_vec) = data {
@@ -311,9 +316,9 @@ pub fn open_file(path: String) -> Result<String, String> {
             if let Ok(data_text) = data {
                 parse_txt(data_text)
             } else {
-                Err(String::from("未知的文本文件格式"))
+                Err(String::from("未知的文件格式"))
             }
         }
-        None => Err(String::from("未知的文件格式")),
+        None => Err(String::from("尚不支持打开文件夹")),
     }
 }
