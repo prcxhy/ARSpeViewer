@@ -10,7 +10,7 @@
 </h3>
 
 ## 下载安装
-支持 Windows 和 Mac OS([⚠注意事项](./README.md#mac-os-使用注意))，请到发布页下载对应的安装包：[Release page](https://github.com/prcxhy/ARSpeViewer/releases)<br>
+支持 Windows 和 Mac OS([⚠注意事项](#mac-os-使用注意))，请到发布页下载对应的安装包：[Release page](https://github.com/prcxhy/ARSpeViewer/releases)<br>
 
 ## 预览
 ![预览](./docs/preview.png)
