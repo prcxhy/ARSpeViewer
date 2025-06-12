@@ -49,25 +49,27 @@ class SpeData {
 
 }
 
-function downSampling(speData: SpeData, stride: number): SpeData {
-    if (stride <= 1) {
+function downSampling(speData: SpeData, size: number[]): SpeData {
+    if (size[0] == speData.height && size[1] == speData.width) {
         return speData;
     }
     let snapshot = { ...speData };
-    snapshot.width = Math.ceil(speData.width / stride);
-    snapshot.height = Math.ceil(speData.height / stride);
+    snapshot.width = size[1];
+    snapshot.height = size[0];
+    let dw = (speData.width - 1) / (size[1] - 1);
+    let dh = (speData.height - 1) / (size[0] - 1);
     if (speData.wavelength) {
         snapshot.wavelength = [];
-        for (var i = 0; i < speData.width; i += stride) {
-            snapshot.wavelength.push(speData.wavelength[i]);
+        for (var i = 0; i < snapshot.width; i ++) {
+            snapshot.wavelength.push(speData.wavelength[Math.floor(i * dw)]);
         }
     }
     snapshot.frame = speData.frame.map(oneFrame => {
         let key: string = Object.keys(oneFrame)[0];
         let newFrame: number[] = [];
-        for (var i = 0; i < speData.height; i += stride) {
-            for (var j = 0; j < speData.width; j += stride) {
-                newFrame.push(oneFrame[key][i * speData.width + j]);
+        for (var i = 0; i < snapshot.height; i ++) {
+            for (var j = 0; j < snapshot.width; j ++) {
+                newFrame.push(oneFrame[key][Math.floor(i * dh) * speData.width + Math.floor(j * dw)]);
             }
         }
         let result: { [key: string]: number[] } = {};

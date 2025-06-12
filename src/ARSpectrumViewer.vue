@@ -21,10 +21,11 @@ const silentPath: Ref<string> | undefined = inject('silentlySave');
 
 var chart1: echarts.ECharts;
 const arspc = useTemplateRef('arspc');
+var chartSize: number[] = [];
 
 const dataSnapshot = computed(() => {
     if (prop.data) {
-        return downSampling(prop.data, 2);
+        return downSampling(prop.data, chartSize);
     }
 })
 
@@ -73,6 +74,11 @@ const yMaxIndex = computed(() => {
 
 onMounted(() => {
     chart1 = echarts.init(arspc.value! as HTMLDivElement);
+
+    chartSize = [
+        (document.getElementById('heatmap-placeholder') as HTMLDivElement).clientWidth - 168,
+        (document.getElementById('heatmap-placeholder') as HTMLDivElement).clientHeight - 84
+    ];
 
     chart1!.on('click', (params: { [key: string]: any }) => {
         if (params.componentType == 'series') {
@@ -354,7 +360,8 @@ function copyToClipboard() {
 }
 
 #heatmap-placeholder,
-#ar-spectral {
+#ar-spectral,
+#ar-spectral-hi-res {
     background-color: white;
     width: 12cm;
     height: 16cm;
