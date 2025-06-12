@@ -110,7 +110,8 @@ button {
     align-items: center;
     transition: 0.3s;
     user-select: none;
-    filter: hue-rotate(45deg);
+    /* gpu加速 - macos优化 */
+    will-change: filter;
 }
 
 button > svg {
@@ -122,6 +123,8 @@ button:hover {
     border: 1px solid var(--color-bg-10);
     background-color: var(--color-bg-9);
     filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.2));
+    /* gpu加速 - macos优化 */
+    will-change: filter;
 }
 
 button:active {
@@ -155,6 +158,8 @@ button:active > svg {
     border-radius: 3mm;
     display: grid;
     transition: 0.5s;
+    /* gpu加速 - macos优化 */
+    will-change: filter;
 }
 
 #spec-container:hover,
