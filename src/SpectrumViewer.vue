@@ -9,6 +9,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 const prop = defineProps<{
     data?: SpeData
     name: string
+    frameIndex: number
 }>()
 const silentPath: Ref<string> | undefined = inject('silentlySave');
 
@@ -21,15 +22,19 @@ watch(() => prop.data, newData => {
     nextTick(() => {       
         if (newData) {
             sliceIndex.value = Math.min(sliceIndex.value, newData.height - 1);
-            drawSpec(chart2, newData, sliceIndex.value, prop.name);
+            drawSpec(chart2, newData, 0, sliceIndex.value, prop.name);
         }
     })
 }, { immediate: true });
 
+watch(() => prop.frameIndex, newIndex => {
+    drawSpec(chart2, prop.data!, newIndex, sliceIndex.value, prop.name);
+});
+
 watch(sliceIndex, newIndex => {
     nextTick(() => {
         if (prop.data) {
-            drawSpec(chart2, prop.data!, newIndex, prop.name);
+            drawSpec(chart2, prop.data, prop.frameIndex, newIndex, prop.name);
         }
     })
 }, { immediate: true });
@@ -42,14 +47,13 @@ function copyToClipboard() {
     emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格', 'ok');
     let str = prop.data!.wavelength ? 'Wavelength\tcounts\nnm\n\n' : 'counts\n\n\n';
 
-    let key = Object.keys(prop.data!.frame[0])[0];
     if (prop.data?.wavelength) {
         prop.data.wavelength.forEach((lambda, j) => {
-            str += `${lambda}\t${prop.data?.frame[0][key][sliceIndex.value * prop.data!.width + j]}\n`;
+            str += `${lambda}\t${prop.data?.frame[prop.frameIndex][sliceIndex.value * prop.data!.width + j]}\n`;
         })
     } else {
         let start = sliceIndex.value * prop.data!.width;
-        str += prop.data?.frame[0][key].slice(start, start + prop.data!.width).join('\n');
+        str += prop.data?.frame[prop.frameIndex].slice(start, start + prop.data!.width).join('\n');
     }
     writeText(str);
 }

@@ -17,6 +17,8 @@ const speData = ref<SpeData>();
 
 const fileName = ref('');
 
+const frameIndex = ref(0);
+
 const sliceIndex = ref(0);
 
 const silentFlag = ref();
@@ -110,9 +112,9 @@ onMounted(async () => {
     </Transition>
   </Teleport>
   <div id="content" @dragover.prevent="" @drop="dropToOpen">
-    <ARSpectrumViewer :data="speData" :name="fileName" :path="workingPath" @show-message="showMessage"
+    <ARSpectrumViewer :data="speData" :name="fileName" :path="workingPath" v-model="frameIndex" @show-message="showMessage"
       @slice-at-index="index => sliceIndex = index" />
-    <SpectrumViewer :data="speData" :name="fileName" v-model="sliceIndex"
+    <SpectrumViewer :data="speData" :name="fileName" :frame-index="frameIndex" v-model="sliceIndex"
       @show-message="showMessage" />
   </div>
 </template>

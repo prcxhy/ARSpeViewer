@@ -133,6 +133,15 @@ button:active {
     filter: drop-shadow(0px 0px 8px var(--color-bg-10));
 }
 
+button:disabled {
+    opacity: 0.5;
+}
+
+button:disabled:hover {
+    border: 1px solid transparent;
+    background-color: transparent;
+}
+
 button:active > svg {
     filter:brightness(0.8);
 }
