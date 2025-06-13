@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import IconLast from "../assets/left.svg?component";
-import IconNext from "../assets/right.svg?component";
+import IconArrow from "../assets/right.svg?component";
 const prop = defineProps<{
     length: number
 }>();
@@ -11,13 +10,13 @@ const index = defineModel<number>({ default: 0 })
 <template>
     <div class="pagination">
         <button @click="index = index <= 0 ? 0 : index - 1" :disabled="index == 0" title="上一帧">
-            <IconLast />
+            <IconArrow style="rotate: 180deg; padding-left: 1px;"/>
         </button>
         <input type="hidden" v-model.number="index">
         <p>{{ `${index + 1}/${prop.length}` }}</p>
         <button @click="index = index >= length - 1 ? length - 1 : index + 1" :disabled="index == length - 1"
             title="下一帧">
-            <IconNext />
+            <IconArrow />
         </button>
     </div>
 </template>
@@ -29,7 +28,9 @@ const index = defineModel<number>({ default: 0 })
 }
 
 .pagination > p {
-    align-content: start;
+    align-content: center;
     user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
 }
 </style>

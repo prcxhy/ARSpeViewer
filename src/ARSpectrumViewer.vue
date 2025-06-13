@@ -416,5 +416,7 @@ function copyToClipboard() {
 
 .range-input-x p {
     user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
 }
 </style>
