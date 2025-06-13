@@ -48,6 +48,8 @@ const state = defineModel<boolean>()
     align-items: center;
     height: 1cm;
     user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
 }
 
 .mode-switch-slot {

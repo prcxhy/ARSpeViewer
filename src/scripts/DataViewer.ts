@@ -9,8 +9,8 @@ const e = 1.602176634e-19;
 const CONST_1240 = H * C0 * 1e9 / e;
 
 class SpeData {
-    min_max: { [key: string]: number[] }[];
-    frame: { [key: string]: number[] }[];
+    min_max: number[][];
+    frame: number[][];
     width: number;
     height: number;
     wavelength: number[] | null;
@@ -21,8 +21,8 @@ class SpeData {
     focal_length_exp: number;
     inclusion_angle_exp: number;
     constructor(
-        min_max: { [key: string]: number[] }[],
-        frame: { [key: string]: number[] }[],
+        min_max: number[][],
+        frame: number[][],
         width: number,
         height: number,
         wavelength: number[] | null,
@@ -49,30 +49,29 @@ class SpeData {
 
 }
 
-function downSampling(speData: SpeData, stride: number): SpeData {
-    if (stride <= 1) {
+function downSampling(speData: SpeData, size: number[]): SpeData {
+    if (size[0] == speData.height && size[1] == speData.width) {
         return speData;
     }
     let snapshot = { ...speData };
-    snapshot.width = Math.ceil(speData.width / stride);
-    snapshot.height = Math.ceil(speData.height / stride);
+    snapshot.width = Math.min(size[1], speData.width);
+    snapshot.height = Math.min(size[0], speData.height);
+    let dw = (speData.width - 1) / (size[1] - 1);
+    let dh = (speData.height - 1) / (size[0] - 1);
     if (speData.wavelength) {
         snapshot.wavelength = [];
-        for (var i = 0; i < speData.width; i += stride) {
-            snapshot.wavelength.push(speData.wavelength[i]);
+        for (var i = 0; i < snapshot.width; i ++) {
+            snapshot.wavelength.push(speData.wavelength[Math.floor(i * dw)]);
         }
     }
     snapshot.frame = speData.frame.map(oneFrame => {
-        let key: string = Object.keys(oneFrame)[0];
         let newFrame: number[] = [];
-        for (var i = 0; i < speData.height; i += stride) {
-            for (var j = 0; j < speData.width; j += stride) {
-                newFrame.push(oneFrame[key][i * speData.width + j]);
+        for (var i = 0; i < snapshot.height; i ++) {
+            for (var j = 0; j < snapshot.width; j ++) {
+                newFrame.push(oneFrame[Math.floor(i * dh) * speData.width + Math.floor(j * dw)]);
             }
         }
-        let result: { [key: string]: number[] } = {};
-        result[key] = newFrame;
-        return result;
+        return newFrame;
     })
     return snapshot;
 }
@@ -98,11 +97,7 @@ function initARSpec(
             formatter: (params: { [key: string]: any }) => {
                 let num = params.value[2];
                 return `${params.seriesName}<br/>${num}`;
-            },
-            // axisPointer: {
-            //     axis: 'x'
-            // },
-            // trigger: 'axis', triggerOn: 'click', showContent: false
+            }
         },
         grid: {
             // show: true,
@@ -237,6 +232,7 @@ function initARSpec(
             max: info.zMax,
             calculable: true,
             realtime: false,
+            // hoverlink: false,
             textStyle: {
                 color: "#000", fontFamily: 'Times New Roman', fontSize: 14
             },
@@ -262,8 +258,8 @@ function initARSpec(
                     // '#FDE725'
                 ]
             },
-            itemHeight: 256,
-            right: 7, top: 'center',
+            itemHeight: chart.getHeight() - 84,
+            right: 7, top: 23,
             align: 'left',
             formatter: (value: string) => {
                 return parseFloat(value).toExponential(1)
@@ -274,7 +270,9 @@ function initARSpec(
                 name: "counts",
                 type: 'heatmap',
                 data: data,
+                // silent: true,
                 emphasis: {
+                    // disable: true,
                     itemStyle: {
                         borderColor: '#0f0',
                         borderWidth: 1
@@ -290,24 +288,22 @@ function initARSpec(
 async function drawARSpec(
     chart: ECharts, speData: SpeData,
     info: {
-        name: string,
+        name: string, frameIndex: number,
         yMin: number, yMax: number,
         xMin: number, xMax: number
     }
 ) {
-    let key = Object.keys(speData.frame[0])[0];
-
     let data: number[][] = [];
     let xLength = speData.height;
     let yLength = speData.width;
     let xData = Array.from({ length: xLength }, (_, i) => i);
     let yData = speData.wavelength;
-    let zMin = speData.min_max[0][key][0];
-    let zMax = speData.min_max[0][key][1];
+    let zMin = speData.min_max[info.frameIndex][0];
+    let zMax = speData.min_max[info.frameIndex][1];
 
     for (var j = 0; j < yLength; j++) {
         for (var i = 0; i < xLength; i++) {
-            data.push([i, j, speData.frame[0][key][i * yLength + j]])
+            data.push([i, j, speData.frame[info.frameIndex][i * yLength + j]])
         }
     }
 
@@ -394,14 +390,13 @@ function initSpec(chart: ECharts, name: string, speData: SpeData, data: number[]
     
 }
 
-async function drawSpec(chart: ECharts, speData: SpeData, index: number, name: string) {
-    let key = Object.keys(speData.min_max[0])[0];
+async function drawSpec(chart: ECharts, speData: SpeData, frameIndex: number, sliceIndex: number, name: string) {
     let data: number[][] = []
     for (var j = 0; j < speData.width; j++) {
         if (speData.wavelength) {
-            data.push([speData.wavelength[j], speData.frame[0][key][index * speData.width + j]]);
+            data.push([speData.wavelength[j], speData.frame[frameIndex][sliceIndex * speData.width + j]]);
         } else {
-            data.push([j, speData.frame[0][key][index * speData.width + j]]);
+            data.push([j, speData.frame[frameIndex][sliceIndex * speData.width + j]]);
         }
     }
     let option = chart.getOption();

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, Ref, ref, useTemplateRef, watch } from 'vue';
 import * as echarts from 'echarts';
-import { downSampling, drawARSpec, SpeData, saveImage, CONST_1240, compatible} from './scripts/DataViewer';
+import { downSampling, drawARSpec, SpeData, saveImage, CONST_1240, compatible } from './scripts/DataViewer';
+import Pagination from './components/Pagination.vue';
 import ModeSwitch from './components/ModeSwitch.vue';
 import IconCopy from './assets/clipboard.svg?component';
 import IconExport from './assets/down-picture.svg?component';
@@ -15,6 +16,8 @@ const prop = defineProps<{
     path: string
 }>()
 
+const frameIndex = defineModel<number>({ default: 0 });
+
 const focusing = ref(false);
 
 const silentPath: Ref<string> | undefined = inject('silentlySave');
@@ -24,7 +27,8 @@ const arspc = useTemplateRef('arspc');
 
 const dataSnapshot = computed(() => {
     if (prop.data) {
-        return downSampling(prop.data, 2);
+        return downSampling(prop.data, [chart1.getWidth() - 168, chart1.getHeight() - 84]);
+        // return downSampling(prop.data, [1024, 1024]);
     }
 })
 
@@ -85,9 +89,10 @@ onMounted(() => {
 watch(() => prop.data, (newData, oldData) => {
     nextTick(() => {
         if (newData) {
+            frameIndex.value = 0;
             if (!oldData) {
                 drawARSpec(chart1, dataSnapshot.value!, {
-                    name: prop.name,
+                    name: prop.name, frameIndex: frameIndex.value,
                     yMin: 0, yMax: prop.data!.width - 1,
                     xMin: 0, xMax: prop.data!.height - 1
                 });
@@ -100,8 +105,9 @@ watch(() => prop.data, (newData, oldData) => {
             } else {
                 let info = compatible(newData, oldData, xMinIndex.value, xMaxIndex.value, yMinLambda.value, yMaxLambda.value);
                 drawARSpec(chart1, dataSnapshot.value!, {
-                    name: prop.name,
-                    ...info
+                    name: prop.name, frameIndex: frameIndex.value,
+                    yMin: 0, yMax: prop.data!.width - 1,
+                    xMin: 0, xMax: prop.data!.height - 1
                 });
                 if (!(newData.wavelength && oldData.wavelength)) {
                     yAxisMode.value = true;
@@ -114,6 +120,14 @@ watch(() => prop.data, (newData, oldData) => {
         }
     })
 }, { immediate: true });
+
+watch(frameIndex, newIndex => {
+    drawARSpec(chart1, dataSnapshot.value!, {
+        name: prop.name, frameIndex: newIndex,
+        yMin: 0, yMax: prop.data!.width - 1,
+        xMin: 0, xMax: prop.data!.height - 1
+    });
+})
 
 const bindingNA = ref();
 
@@ -175,7 +189,7 @@ watch(yMinIndex, newIndex => {
         chart1.dispatchAction({
             type: 'dataZoom',
             dataZoomIndex: 4,
-            startValue: yMaxEnergy.value,
+            endValue: yMaxEnergy.value,
         });
     }
 })
@@ -195,7 +209,7 @@ watch(yMaxIndex, newIndex => {
         chart1.dispatchAction({
             type: 'dataZoom',
             dataZoomIndex: 4,
-            endValue: yMinEnergy.value,
+            startValue: yMinEnergy.value,
         });
     }
 })
@@ -239,7 +253,6 @@ function copyToClipboard() {
         str = `${bindingNA.value ? 'tan(θ)' : 'Index'}\t\tcounts\n\n\n`;
     }
 
-    let key = Object.keys(prop.data!.frame[0])[0];
     if (bindingNA.value) {
         let tan = Math.tan(Math.asin(bindingNA.value));
         let height = xMaxIndex.value - xMinIndex.value + 1;
@@ -266,7 +279,7 @@ function copyToClipboard() {
             str += `${yAxisMode.value ? prop.data!.wavelength[i] : (CONST_1240 / prop.data!.wavelength[i])}`;
         }
         for (var j = xMinIndex.value; j <= xMaxIndex.value; j++) {
-            str += `\t${prop.data!.frame[0][key][j * prop.data!.width + i]}`;
+            str += `\t${prop.data!.frame[frameIndex.value][j * prop.data!.width + i]}`;
         }
         str += '\n';
     }
@@ -286,6 +299,10 @@ function copyToClipboard() {
             </div>
             <div v-show="prop.data" ref="arspc" id="ar-spectral"></div>
         </div>
+        <Transition name="pagination">
+            <Pagination v-if="prop.data && prop.data.frame.length > 1" :length="prop.data.frame.length"
+                v-model="frameIndex" style="grid-column-start: 1;" />
+        </Transition>
         <button style="grid-column-start: 2;" @click="copyToClipboard" title="复制数据到剪贴板">
             <IconCopy />
         </button>
@@ -297,7 +314,7 @@ function copyToClipboard() {
         </button>
     </div>
     <div id="arspc-options" @mouseover="focusing = true" @mouseleave="focusing = false"
-    :class="['container', focusing ? 'container-focus' : '']">
+        :class="['container', focusing ? 'container-focus' : '']">
         <ModeSwitch v-if="prop.data?.wavelength" :name="'纵轴模式'" :mode1="'波长'" :mode2="'能量'" v-model="yAxisMode" />
         <div class="range-input-lambda" v-show="yAxisMode">
             <label for="y-min-lambda">纵轴范围</label>
@@ -348,13 +365,25 @@ function copyToClipboard() {
     max-height: 16cm;
     border-radius: 1mm;
     grid-row: 2 / 3;
-    grid-column: 1 / 4;
+    grid-column: 1 / -1;
     align-self: center;
     overflow: auto;
 }
 
+.pagination-enter-active,
+.pagination-leave-active {
+  transition: all 0.3s ease;
+}
+
+.pagination-enter-from,
+.pagination-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
 #heatmap-placeholder,
-#ar-spectral {
+#ar-spectral,
+#ar-spectral-hi-res {
     background-color: white;
     width: 12cm;
     height: 16cm;
@@ -388,5 +417,7 @@ function copyToClipboard() {
 
 .range-input-x p {
     user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
 }
 </style>

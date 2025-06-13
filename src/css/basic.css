@@ -45,10 +45,13 @@ h3 {
     justify-content: center;
     color: rgb(96, 96, 96);
     user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
 }
 
 label {
     user-select: none;
+    -webkit-user-select: none;
 }
 
 input[type="number"],
@@ -110,7 +113,9 @@ button {
     align-items: center;
     transition: 0.3s;
     user-select: none;
-    filter: hue-rotate(45deg);
+    -webkit-user-select: none;
+    /* gpu加速 - macos优化 */
+    will-change: filter;
 }
 
 button > svg {
@@ -122,12 +127,23 @@ button:hover {
     border: 1px solid var(--color-bg-10);
     background-color: var(--color-bg-9);
     filter: drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.2));
+    /* gpu加速 - macos优化 */
+    will-change: filter;
 }
 
 button:active {
     background-color: var(--color-bg-10);
     border: 1px solid var(--color-bg-10);
     filter: drop-shadow(0px 0px 8px var(--color-bg-10));
+}
+
+button:disabled {
+    opacity: 0.5;
+}
+
+button:disabled:hover {
+    border: 1px solid transparent;
+    background-color: transparent;
 }
 
 button:active > svg {
@@ -155,6 +171,8 @@ button:active > svg {
     border-radius: 3mm;
     display: grid;
     transition: 0.5s;
+    /* gpu加速 - macos优化 */
+    will-change: filter;
 }
 
 #spec-container:hover,
