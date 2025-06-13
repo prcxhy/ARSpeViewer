@@ -106,7 +106,8 @@ watch(() => prop.data, (newData, oldData) => {
                 let info = compatible(newData, oldData, xMinIndex.value, xMaxIndex.value, yMinLambda.value, yMaxLambda.value);
                 drawARSpec(chart1, dataSnapshot.value!, {
                     name: prop.name, frameIndex: frameIndex.value,
-                    ...info
+                    yMin: 0, yMax: prop.data!.width - 1,
+                    xMin: 0, xMax: prop.data!.height - 1
                 });
                 if (!(newData.wavelength && oldData.wavelength)) {
                     yAxisMode.value = true;
@@ -188,7 +189,7 @@ watch(yMinIndex, newIndex => {
         chart1.dispatchAction({
             type: 'dataZoom',
             dataZoomIndex: 4,
-            startValue: yMaxEnergy.value,
+            endValue: yMaxEnergy.value,
         });
     }
 })
@@ -208,7 +209,7 @@ watch(yMaxIndex, newIndex => {
         chart1.dispatchAction({
             type: 'dataZoom',
             dataZoomIndex: 4,
-            endValue: yMinEnergy.value,
+            startValue: yMinEnergy.value,
         });
     }
 })
