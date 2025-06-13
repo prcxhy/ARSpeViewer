@@ -21,11 +21,11 @@ const silentPath: Ref<string> | undefined = inject('silentlySave');
 
 var chart1: echarts.ECharts;
 const arspc = useTemplateRef('arspc');
-var chartSize: number[] = [];
 
 const dataSnapshot = computed(() => {
     if (prop.data) {
-        return downSampling(prop.data, chartSize);
+        return downSampling(prop.data, [chart1.getWidth() - 168, chart1.getHeight() - 84]);
+        // return downSampling(prop.data, [1024, 1024]);
     }
 })
 
@@ -74,11 +74,6 @@ const yMaxIndex = computed(() => {
 
 onMounted(() => {
     chart1 = echarts.init(arspc.value! as HTMLDivElement);
-
-    chartSize = [
-        (document.getElementById('heatmap-placeholder') as HTMLDivElement).clientWidth - 168,
-        (document.getElementById('heatmap-placeholder') as HTMLDivElement).clientHeight - 84
-    ];
 
     chart1!.on('click', (params: { [key: string]: any }) => {
         if (params.componentType == 'series') {

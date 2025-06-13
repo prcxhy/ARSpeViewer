@@ -54,8 +54,8 @@ function downSampling(speData: SpeData, size: number[]): SpeData {
         return speData;
     }
     let snapshot = { ...speData };
-    snapshot.width = size[1];
-    snapshot.height = size[0];
+    snapshot.width = Math.min(size[1], speData.width);
+    snapshot.height = Math.min(size[0], speData.height);
     let dw = (speData.width - 1) / (size[1] - 1);
     let dh = (speData.height - 1) / (size[0] - 1);
     if (speData.wavelength) {
@@ -100,11 +100,7 @@ function initARSpec(
             formatter: (params: { [key: string]: any }) => {
                 let num = params.value[2];
                 return `${params.seriesName}<br/>${num}`;
-            },
-            // axisPointer: {
-            //     axis: 'x'
-            // },
-            // trigger: 'axis', triggerOn: 'click', showContent: false
+            }
         },
         grid: {
             // show: true,
@@ -239,6 +235,7 @@ function initARSpec(
             max: info.zMax,
             calculable: true,
             realtime: false,
+            // hoverlink: false,
             textStyle: {
                 color: "#000", fontFamily: 'Times New Roman', fontSize: 14
             },
@@ -264,8 +261,8 @@ function initARSpec(
                     // '#FDE725'
                 ]
             },
-            itemHeight: 256,
-            right: 7, top: 'center',
+            itemHeight: chart.getHeight() - 84,
+            right: 7, top: 23,
             align: 'left',
             formatter: (value: string) => {
                 return parseFloat(value).toExponential(1)
@@ -276,7 +273,9 @@ function initARSpec(
                 name: "counts",
                 type: 'heatmap',
                 data: data,
+                // silent: true,
                 emphasis: {
+                    // disable: true,
                     itemStyle: {
                         borderColor: '#0f0',
                         borderWidth: 1
