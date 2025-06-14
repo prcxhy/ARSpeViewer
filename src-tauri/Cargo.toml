@@ -1,6 +1,6 @@
 [package]
 name = "arspeviewer"
-version = "1.0.0"
+version = "1.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -28,6 +28,8 @@ tauri-plugin-clipboard-manager = "2"
 quick-xml = "0.37.5"
 rayon = "1.10.0"
 itertools = "0.14.0"
+ndarray = "0.16.1"
+ninterp = "0.7.3"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-cli = "2"
