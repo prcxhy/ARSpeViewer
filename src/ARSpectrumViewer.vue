@@ -43,6 +43,7 @@ var X_RANGE_BUFFER = [0, 0];
 const xMinInput = ref();
 const xMaxInput = ref();
 
+const eVMode = ref(false);
 var EV_MODE = false;
 const yMinInput = ref();
 const yMaxInput = ref();
@@ -100,7 +101,7 @@ watch(() => prop.data, (newData, oldData) => {
                     yMin: 0, yMax: prop.data!.width - 1,
                     xMinIndex: 0, xMaxIndex: prop.data!.height - 1
                 });
-                EV_MODE = false;
+                eVMode.value = false;
                 xMinIndex.value = 0;
                 xMaxIndex.value = newData!.height - 1;
                 yMinInput.value = newData!.wavelength ? newData!.wavelength[0] : 0;
@@ -109,10 +110,10 @@ watch(() => prop.data, (newData, oldData) => {
             } else {
                 let info = compatible(newData, oldData, xMinIndex.value, xMaxIndex.value, yMinInput.value, yMaxInput.value);
                 if (!(newData.wavelength && oldData.wavelength)) {
-                    EV_MODE = false;
+                    eVMode.value = false;
                 }
-                yMinInput.value = EV_MODE ? CONST_1240 / info.yMax : info.yMin;
-                yMaxInput.value = EV_MODE ? CONST_1240 / info.yMin : info.yMax;
+                yMinInput.value = eVMode.value ? CONST_1240 / info.yMax : info.yMin;
+                yMaxInput.value = eVMode.value ? CONST_1240 / info.yMin : info.yMax;
                 xMinIndex.value = info.xMinIndex;
                 xMaxIndex.value = info.xMaxIndex;
                 if (!info.xCompate) {
@@ -126,7 +127,7 @@ watch(() => prop.data, (newData, oldData) => {
                 }
                 drawARSpec(chart1, dataSnapshot.value!, {
                     name: prop.name, frameIndex: frameIndex.value,
-                    eVMode: EV_MODE, xMode: xMode.value,
+                    eVMode: eVMode.value, xMode: xMode.value,
                     yMin: 0, yMax: prop.data!.width - 1,
                     xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
                     xMin: tanMin.value, xMax: tanMax.value
@@ -139,7 +140,7 @@ watch(() => prop.data, (newData, oldData) => {
 watch(frameIndex, newIndex => {
     drawARSpec(chart1, dataSnapshot.value!, {
         name: prop.name, frameIndex: newIndex,
-        eVMode: EV_MODE, xMode: bindingLock.value ? xMode.value : '',
+        eVMode: eVMode.value, xMode: bindingLock.value ? xMode.value : '',
         yMin: 0, yMax: prop.data!.width - 1,
         xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
         xMin: tanMin.value, xMax: tanMax.value
@@ -240,7 +241,6 @@ watch(xMaxInput, newVal => {
         let maxAngle = Math.atan(tanMax.value) / Math.PI * 180;
         max = Math.round((newVal - minAngle) / (maxAngle - minAngle) * (dataSnapshot.value!.height - 1));
     } else {
-        // let lambda = EV_MODE ? CONST_1240 / yMaxInput.value : yMinInput.value;
         let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
         let minK = 2 * Math.PI * tanMin.value / lambda * 1000;
         let maxK = 2 * Math.PI * tanMax.value / lambda * 1000;
@@ -270,9 +270,9 @@ watch(xMode, (newMode, oldMode) => {
         newMin = Math.atan(xMinInput.value) / Math.PI * 180;
         newMax = Math.atan(xMaxInput.value) / Math.PI * 180;
     }
-    let lambda = EV_MODE ? CONST_1240 / yMinInput.value : yMaxInput.value;
+    // let lambda = eVMode.value ? CONST_1240 / yMinInput.value : yMaxInput.value;
     // let lambda = EV_MODE ? CONST_1240 / yMaxInput.value : yMinInput.value;
-    // let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
+    let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
     if (newMode == 'k' && oldMode == 'tan') {
         newMin = 2 * Math.PI * xMinInput.value / lambda * 1000;
         newMax = 2 * Math.PI * xMaxInput.value / lambda * 1000;
@@ -312,7 +312,7 @@ watch(yMinIndex, newIndex => {
         chart1.dispatchAction({
             type: 'dataZoom',
             dataZoomIndex: 4,
-            endValue: EV_MODE ? yMaxInput.value : CONST_1240 / yMinInput.value,
+            endValue: eVMode.value ? yMaxInput.value : CONST_1240 / yMinInput.value,
         });
     }
 })
@@ -332,25 +332,30 @@ watch(yMaxIndex, newIndex => {
         chart1.dispatchAction({
             type: 'dataZoom',
             dataZoomIndex: 4,
-            startValue: EV_MODE ? yMinInput.value : CONST_1240 / yMaxInput.value,
+            startValue: eVMode.value ? yMinInput.value : CONST_1240 / yMaxInput.value,
         });
     }
 })
 
 function axesChanged() {
     if (bindingLock.value) {
-        emit('stretch', EV_MODE, xMode.value, tanMin.value, tanMax.value);
+        emit('stretch', eVMode.value, xMode.value, tanMin.value, tanMax.value);
     } else {
-        emit('stretch', EV_MODE, xMode.value, 0, prop.data!.height - 1);
+        emit('stretch', eVMode.value, xMode.value, 0, prop.data!.height - 1);
     }
 }
+
+watch(eVMode, newVal => {
+    EV_MODE = newVal;
+    axesChanged();
+})
 
 function resetYRange() {
     if (dataSnapshot.value!.wavelength) {
         let minLambda = dataSnapshot.value!.wavelength[0];
         let maxLambda = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
-        yMinInput.value = EV_MODE ? CONST_1240 / maxLambda : minLambda;
-        yMaxInput.value = EV_MODE ? CONST_1240 / minLambda : maxLambda;
+        yMinInput.value = eVMode.value ? CONST_1240 / maxLambda : minLambda;
+        yMaxInput.value = eVMode.value ? CONST_1240 / minLambda : maxLambda;
     } else {
         yMinInput.value = 0;
         yMaxInput.value = prop.data!.width - 1;
@@ -360,8 +365,26 @@ function resetXIndex() {
     xMinIndex.value = 0;
     xMaxIndex.value = prop.data!.height - 1;
 }
+
 function resetNABinding() {
     inputNA.value = '';
+}
+
+function resetXRange() {
+    let tan = Math.tan(Math.asin(inputNA.value));
+    if (xMode.value == 'tan') {
+        xMinInput.value = -tan;
+        xMaxInput.value = tan;
+    } 
+    if (xMode.value == 'angle') {
+        xMinInput.value = -Math.atan(tan) / Math.PI * 180;
+        xMaxInput.value = Math.atan(tan) / Math.PI * 180;
+    }
+    if (xMode.value == 'k') {
+        let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
+        xMinInput.value = 2 * Math.PI * -tan / lambda * 1000;
+        xMaxInput.value = 2 * Math.PI * tan / lambda * 1000;
+    }
 }
 
 function copyToClipboard() {
@@ -370,8 +393,8 @@ function copyToClipboard() {
     emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格', 'ok');
     let str = '';
     if (prop.data!.wavelength) {
-        str = `${inputNA.value ? 'tan(θ)' : 'Index'}\t${EV_MODE ? 'Energy' : 'Wavelength'}\tcounts
-                \t${EV_MODE ? 'eV' : 'nm'}\n\n`;
+        str = `${inputNA.value ? 'tan(θ)' : 'Index'}\t${eVMode.value ? 'Energy' : 'Wavelength'}\tcounts
+                \t${eVMode.value ? 'eV' : 'nm'}\n\n`;
     } else {
         str = `${inputNA.value ? 'tan(θ)' : 'Index'}\t\tcounts\n\n\n`;
     }
@@ -399,7 +422,7 @@ function copyToClipboard() {
     }
     for (var i = yMin; i <= yMax; i++) {
         if (prop.data!.wavelength) {
-            str += `${EV_MODE ? (CONST_1240 / prop.data!.wavelength[i]) : prop.data!.wavelength[i]}`;
+            str += `${eVMode.value ? (CONST_1240 / prop.data!.wavelength[i]) : prop.data!.wavelength[i]}`;
         }
         for (var j = xMinIndex.value; j <= xMaxIndex.value; j++) {
             str += `\t${prop.data!.frame[frameIndex.value][j * prop.data!.width + i]}`;
@@ -445,7 +468,7 @@ function copyToClipboard() {
             <input id="y-min-input" type="text" v-model.number="yMinInput">
             <label for="y-max-input">~</label>
             <input id="y-max-input" type="text" v-model.number="yMaxInput">
-            <select v-if="prop.data?.wavelength" v-model="EV_MODE" @change="axesChanged">
+            <select v-if="prop.data?.wavelength" v-model="eVMode">
                 <option :value="false">nm</option>
                 <option :value="true">eV</option>
             </select>
@@ -472,7 +495,7 @@ function copyToClipboard() {
         </div>
         <div v-if="bindingLock" class="range-input-x">
             <label for="x-min-input">横轴范围</label>
-            <button @click="" title="重置">
+            <button @click="resetXRange" title="重置">
                 <IconReset />
             </button>
             <input id="x-min-input" type="text" v-model.number="xMinInput">
@@ -481,7 +504,7 @@ function copyToClipboard() {
             <select v-model="xMode">
                 <option value="tan">tan(θ)</option>
                 <option value="angle">°</option>
-                <option v-if="prop.data?.wavelength" value="k">k</option>
+                <option v-if="prop.data?.wavelength" value="k">μm^-1(k)</option>
             </select>
         </div>
     </div>
