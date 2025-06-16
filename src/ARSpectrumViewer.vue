@@ -272,8 +272,8 @@ watch(xMode, (newMode, oldMode) => {
     }
     // let lambda = eVMode.value ? CONST_1240 / yMinInput.value : yMaxInput.value;
     // let lambda = EV_MODE ? CONST_1240 / yMaxInput.value : yMinInput.value;
-    let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
     if (newMode == 'k' && oldMode == 'tan') {
+        let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
         newMin = 2 * Math.PI * xMinInput.value / lambda * 1000;
         newMax = 2 * Math.PI * xMaxInput.value / lambda * 1000;
     }
@@ -281,11 +281,13 @@ watch(xMode, (newMode, oldMode) => {
         newMin = Math.tan(xMinInput.value / 180 * Math.PI);
         newMax = Math.tan(xMaxInput.value / 180 * Math.PI);
         if (newMode == 'k') {
+            let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
             newMin /= lambda / (1000 * 2 * Math.PI);
             newMax /= lambda / (1000 * 2 * Math.PI);
         }
     }
     if (oldMode == 'k') {
+        let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
         newMin = xMinInput.value * lambda / (1000 * 2 * Math.PI);
         newMax = xMaxInput.value * lambda / (1000 * 2 * Math.PI);
         if (newMode == 'angle') {
