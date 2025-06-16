@@ -81,7 +81,8 @@ function initARSpec(
     info: {
         name: string,
         yMin: number, yMax: number,
-        xMin: number, xMax: number,
+        xMinIndex: number, xMaxIndex: number,
+        xMin?: number, xMax?: number,
         zMin: number, zMax: number
     }) {
 
@@ -115,8 +116,8 @@ function initARSpec(
                 show: true,
                 type: 'value',
                 position: 'bottom',
-                min: info.xMin,
-                max: info.xMax,
+                min: info.xMinIndex,
+                max: info.xMaxIndex,
                 nameLocation: 'center', nameGap: 28,
                 name: "Index", nameTextStyle: {
                     color: "#000", fontFamily: 'Times New Roman', fontSize: 16
@@ -226,6 +227,10 @@ function initARSpec(
             type: 'slider',
             yAxisIndex: 2,
             show: false
+        }, {
+            type: 'slider',
+            xAxisIndex: 2,
+            show: false
         }],
         visualMap: {
             min: info.zMin,
@@ -289,8 +294,10 @@ async function drawARSpec(
     chart: ECharts, speData: SpeData,
     info: {
         name: string, frameIndex: number,
+        eVMode: boolean, xMode: string,
         yMin: number, yMax: number,
-        xMin: number, xMax: number
+        xMinIndex: number, xMaxIndex: number,
+        xMin?: number, xMax?: number
     }
 ) {
     let data: number[][] = [];
@@ -307,17 +314,44 @@ async function drawARSpec(
         }
     }
 
+    let xName = 'Index';
+    let xMin = 0;
+    let xMax = xLength - 1;
+
+    if (info.xMin && info.xMax) {
+        switch (info.xMode) {
+            case 'tan': xName = 'tan(θ)';
+                xMin = info.xMin;
+                xMax = info.xMax;
+                break;
+            case 'angle': xName = 'θ (°)';
+                xMin = Math.atan(info.xMin) / Math.PI * 180;
+                xMax = Math.atan(info.xMax) / Math.PI * 180;
+                break;
+            case 'k': xName = 'k (μm^-1)';
+                xMin = 2 * Math.PI * info.xMin / yData![yLength - 1] * 1000;
+                xMax = 2 * Math.PI * info.xMax / yData![yLength - 1] * 1000;
+                break;
+        }
+    }
+
     let option = chart.getOption();
     
     if (option) {
         (option.title as {[key: string]: any}[])[0].text = info.name;
         (option.xAxis as {[key: string]: any}[])[0].data = xData;
-        (option.xAxis as {[key: string]: any}[])[1].min = info.xMin;
-        (option.xAxis as {[key: string]: any}[])[1].max = info.xMax;
+        (option.xAxis as {[key: string]: any}[])[1].min = info.xMinIndex;
+        (option.xAxis as {[key: string]: any}[])[1].max = info.xMaxIndex;
+        (option.xAxis as {[key: string]: any}[])[2].name = xName;
+        (option.xAxis as {[key: string]: any}[])[2].min = xMin;
+        (option.xAxis as {[key: string]: any}[])[2].max = xMax;
         (option.yAxis as {[key: string]: any}[])[0].data = yData;
+        (option.yAxis as {[key: string]: any}[])[0].inverse = info.eVMode;
+        (option.yAxis as {[key: string]: any}[])[1].show = !info.eVMode;
         (option.yAxis as {[key: string]: any}[])[1].min = yData ? yData[0] : info.yMin;
         (option.yAxis as {[key: string]: any}[])[1].max = yData ? yData[yLength - 1] : info.yMax;
         (option.yAxis as {[key: string]: any}[])[1].name = yData ? "Wavelength (nm)" : "Index";
+        (option.yAxis as {[key: string]: any}[])[2].show = info.eVMode;
         (option.yAxis as {[key: string]: any}[])[2].min = yData ? CONST_1240 / yData[yLength - 1] : 0;
         (option.yAxis as {[key: string]: any}[])[2].max = yData ? CONST_1240 / yData[0] : yLength - 1;
         (option.visualMap as {[key: string]: any}[])[0].min = zMin;
@@ -438,28 +472,36 @@ async function saveImage(chart: echarts.ECharts, name: string, isntDrawn: boolea
     }
 }
 
-function compatible(newSpe: SpeData, oldSpe: SpeData, xMin: number, xMax: number, yMin: number, yMax: number) {
+function compatible(newSpe: SpeData, oldSpe: SpeData, xMinIndex: number, xMaxIndex: number, yMinInput: number, yMaxInput: number) {
     let info: {
-        yMin: number, yMax: number,
-        xMin: number, xMax: number
+        yCompate: boolean, yMin: number, yMax: number,
+        xCompate: boolean, xMinIndex: number, xMaxIndex: number
     } = {
-        yMin: 0, yMax: 0,
-        xMin: 0, xMax: newSpe.height - 1
+        yCompate: false, yMin: 0, yMax: 0,
+        xCompate: false, xMinIndex: 0, xMaxIndex: newSpe.height - 1
     };
+    
+    let inputsAreEV = oldSpe.wavelength && yMinInput <= Math.sqrt(CONST_1240);
+    let lambdaMin = inputsAreEV ? CONST_1240 / yMaxInput : yMinInput;
+    let lambdaMax = inputsAreEV ? CONST_1240 / yMinInput : yMaxInput;
+    // let yMin = 0;
+    // let yMax = 0;
     if (newSpe.wavelength && oldSpe.wavelength &&
-        !(yMin >= newSpe.wavelength[newSpe.width - 1] || yMax <= newSpe.wavelength[0])) {
+        !(lambdaMin >= newSpe.wavelength[newSpe.width - 1] || lambdaMax <= newSpe.wavelength[0])) {
         let bandwidth = newSpe.wavelength[newSpe.width - 1] - newSpe.wavelength[0];
         if ((Math.abs(newSpe.wavelength[0] - oldSpe.wavelength[0]) <= bandwidth / 10) &&
         (Math.abs(newSpe.wavelength[newSpe.width - 1] - oldSpe.wavelength[oldSpe.width - 1]) <= bandwidth / 10)) {
-            info.yMin = Math.max(yMin, newSpe.wavelength[0]);
-            info.yMax = Math.min(yMax, newSpe.wavelength[newSpe.width - 1]);
+            info.yCompate = true;
+            info.yMin = Math.max(lambdaMin, newSpe.wavelength[0]);
+            info.yMax = Math.min(lambdaMax, newSpe.wavelength[newSpe.width - 1]);
         } else {
             info.yMin = newSpe.wavelength[0];
             info.yMax = newSpe.wavelength[newSpe.width - 1];
         }
     } else if ((!newSpe.wavelength && !oldSpe.wavelength) && newSpe.width == oldSpe.width) {
-        info.yMin = yMin;
-        info.yMax = yMax;
+        info.yCompate = true;
+        info.yMin = lambdaMin;
+        info.yMax = lambdaMax;
     } else if (!newSpe.wavelength) {
         info.yMin = 0;
         info.yMax = newSpe.width - 1;
@@ -467,9 +509,14 @@ function compatible(newSpe: SpeData, oldSpe: SpeData, xMin: number, xMax: number
         info.yMin = newSpe.wavelength[0];
         info.yMax = newSpe.wavelength[newSpe.width - 1];
     }
+    
+    // let outputsAreEV = info.yCompate && inputsAreEV;
+    // info.yMin = outputsAreEV ? CONST_1240 / yMax : yMin;
+    // info.yMax = outputsAreEV ? CONST_1240 / yMin : yMax;
     if (newSpe.height == oldSpe.height) {
-        info.xMin = xMin;
-        info.xMax = xMax;
+        info.xCompate = true;
+        info.xMinIndex = xMinIndex;
+        info.xMaxIndex = xMaxIndex;
     }
     return info;
 }

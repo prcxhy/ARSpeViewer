@@ -3,11 +3,12 @@ import { computed, inject, nextTick, onMounted, Ref, ref, useTemplateRef, watch 
 import * as echarts from 'echarts';
 import { downSampling, drawARSpec, SpeData, saveImage, CONST_1240, compatible } from './scripts/DataViewer';
 import Pagination from './components/Pagination.vue';
-import ModeSwitch from './components/ModeSwitch.vue';
 import IconCopy from './assets/clipboard.svg?component';
 import IconExport from './assets/down-picture.svg?component';
 import IconOpen from './assets/folder-open.svg?component';
 import IconReset from './assets/undo.svg?component';
+import IconLock from './assets/lock.svg?component';
+import IconUnlock from './assets/unlock.svg?component';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 
 const prop = defineProps<{
@@ -32,45 +33,47 @@ const dataSnapshot = computed(() => {
     }
 })
 
-const emit = defineEmits(['show-message', 'slice-at-index']);
+const emit = defineEmits(['show-message', 'slice-at-index', 'stretch']);
 
 const xMinIndex = ref();
 const xMaxIndex = ref();
+const bindingLock = ref(false);
+const xMode = ref('tan');
+var X_RANGE_BUFFER = [0, 0];
+const xMinInput = ref();
+const xMaxInput = ref();
 
-const yAxisMode = ref(true);
-const yMinLambda = ref();
-const yMaxLambda = ref();
-const yMinEnergy = computed({
-    get: () => CONST_1240 / yMaxLambda.value,
-    set: val => {
-        yMaxLambda.value = CONST_1240 / val;
-    }
-});
-const yMaxEnergy = computed({
-    get: () => CONST_1240 / yMinLambda.value,
-    set: val => {
-        yMinLambda.value = CONST_1240 / val;
-    }
-});
+var EV_MODE = false;
+const yMinInput = ref();
+const yMaxInput = ref();
+
 const yMinIndex = computed(() => {
     if (dataSnapshot.value) {
-        if (dataSnapshot.value.wavelength) {
+        if (dataSnapshot.value.wavelength && !EV_MODE) {
             let min = dataSnapshot.value.wavelength[0];
             let max = dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
-            return Math.round((yMinLambda.value - min) / (max - min) * (dataSnapshot.value.width - 1));
+            return Math.round((yMinInput.value - min) / (max - min) * (dataSnapshot.value.width - 1));
+        } else if (dataSnapshot.value.wavelength && EV_MODE) {
+            let max = CONST_1240 / dataSnapshot.value.wavelength[0];
+            let min = CONST_1240 / dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
+            return Math.round((max - yMaxInput.value) / (max - min) * (dataSnapshot.value.width - 1));
         } else {
-            return Math.round(yMinLambda.value / (prop.data!.width - 1) * (dataSnapshot.value.width - 1));
+            return Math.round(yMinInput.value / (prop.data!.width - 1) * (dataSnapshot.value.width - 1));
         }
     }
 });
 const yMaxIndex = computed(() => {
     if (dataSnapshot.value) {
-        if (dataSnapshot.value.wavelength) {
+        if (dataSnapshot.value.wavelength && !EV_MODE) {
             let min = dataSnapshot.value.wavelength[0];
             let max = dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
-            return Math.round((yMaxLambda.value - min) / (max - min) * (dataSnapshot.value.width - 1));
+            return Math.round((yMaxInput.value - min) / (max - min) * (dataSnapshot.value.width - 1));
+        } else if (dataSnapshot.value.wavelength && EV_MODE) {
+            let max = CONST_1240 / dataSnapshot.value.wavelength[0];
+            let min = CONST_1240 / dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
+            return Math.round((max - yMinInput.value) / (max - min) * (dataSnapshot.value.width - 1));
         } else {
-            return Math.round(yMaxLambda.value / (prop.data!.width - 1) * (dataSnapshot.value.width - 1));
+            return Math.round(yMaxInput.value / (prop.data!.width - 1) * (dataSnapshot.value.width - 1));
         }
     }
 });
@@ -93,29 +96,41 @@ watch(() => prop.data, (newData, oldData) => {
             if (!oldData) {
                 drawARSpec(chart1, dataSnapshot.value!, {
                     name: prop.name, frameIndex: frameIndex.value,
+                    eVMode: false, xMode: '',
                     yMin: 0, yMax: prop.data!.width - 1,
-                    xMin: 0, xMax: prop.data!.height - 1
+                    xMinIndex: 0, xMaxIndex: prop.data!.height - 1
                 });
-                yAxisMode.value = true;
+                EV_MODE = false;
                 xMinIndex.value = 0;
                 xMaxIndex.value = newData!.height - 1;
-                yMinLambda.value = newData!.wavelength ? newData!.wavelength[0] : 0;
-                yMaxLambda.value = newData!.wavelength ? newData!.wavelength[newData!.width - 1] : newData!.width - 1;
-                bindingNA.value = '';
+                yMinInput.value = newData!.wavelength ? newData!.wavelength[0] : 0;
+                yMaxInput.value = newData!.wavelength ? newData!.wavelength[newData!.width - 1] : newData!.width - 1;
+                inputNA.value = '';
             } else {
-                let info = compatible(newData, oldData, xMinIndex.value, xMaxIndex.value, yMinLambda.value, yMaxLambda.value);
+                let info = compatible(newData, oldData, xMinIndex.value, xMaxIndex.value, yMinInput.value, yMaxInput.value);
+                if (!(newData.wavelength && oldData.wavelength)) {
+                    EV_MODE = false;
+                }
+                yMinInput.value = EV_MODE ? CONST_1240 / info.yMax : info.yMin;
+                yMaxInput.value = EV_MODE ? CONST_1240 / info.yMin : info.yMax;
+                xMinIndex.value = info.xMinIndex;
+                xMaxIndex.value = info.xMaxIndex;
+                if (!info.xCompate) {
+                    bindingLock.value = false;
+                }
+                if (!info.yCompate && info.xCompate && xMode.value == 'k') {
+                    xMode.value = 'tan';
+                } else {
+                    xMinInput.value = X_RANGE_BUFFER[0];
+                    xMaxInput.value = X_RANGE_BUFFER[1];
+                }
                 drawARSpec(chart1, dataSnapshot.value!, {
                     name: prop.name, frameIndex: frameIndex.value,
+                    eVMode: EV_MODE, xMode: xMode.value,
                     yMin: 0, yMax: prop.data!.width - 1,
-                    xMin: 0, xMax: prop.data!.height - 1
+                    xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
+                    xMin: tanMin.value, xMax: tanMax.value
                 });
-                if (!(newData.wavelength && oldData.wavelength)) {
-                    yAxisMode.value = true;
-                }
-                xMinIndex.value = info.xMin;
-                xMaxIndex.value = info.xMax;
-                yMinLambda.value = info.yMin;
-                yMaxLambda.value = info.yMax;
             }
         }
     })
@@ -124,23 +139,34 @@ watch(() => prop.data, (newData, oldData) => {
 watch(frameIndex, newIndex => {
     drawARSpec(chart1, dataSnapshot.value!, {
         name: prop.name, frameIndex: newIndex,
+        eVMode: EV_MODE, xMode: bindingLock.value ? xMode.value : '',
         yMin: 0, yMax: prop.data!.width - 1,
-        xMin: 0, xMax: prop.data!.height - 1
+        xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
+        xMin: tanMin.value, xMax: tanMax.value
     });
 })
 
-const bindingNA = ref();
+const inputNA = ref();
+const tanMin = ref();
+const tanMax = ref();
 
-watch(bindingNA, newVal => {
-    let inputed = newVal && newVal != '';
-    let xAxisOptions = (chart1.getOption().xAxis as { [key: string]: any }[]);
-    xAxisOptions[1].show = !inputed;
-    xAxisOptions[2].show = inputed;
-    if (inputed) {
-        let tan = Math.tan(Math.asin(newVal));
-        xAxisOptions[2].min = -tan;
-        xAxisOptions[2].max = tan;
+watch(bindingLock, locked => {
+    let tan = Math.tan(Math.asin(inputNA.value));
+    if (locked) {
+        xMinInput.value = -tan;
+        xMaxInput.value = tan;
+        let a = xMaxIndex.value - xMinIndex.value;
+        tanMin.value = -tan - xMinIndex.value / a * 2 * tan;
+        tanMax.value = tan + (prop.data!.height - 1 - xMaxIndex.value) / a * 2 * tan;
+    } else {
+        X_RANGE_BUFFER = [-tan, tan];
+        xMode.value = 'tan';
     }
+    let xAxisOptions = (chart1.getOption().xAxis as { [key: string]: any }[]);
+    xAxisOptions[1].show = !locked;
+    xAxisOptions[2].show = locked;
+    xAxisOptions[2].min = -tan;
+    xAxisOptions[2].max = tan;
     chart1.setOption({
         xAxis: xAxisOptions
     })
@@ -174,6 +200,103 @@ watch(xMaxIndex, newIndex => {
     });
 });
 
+watch(xMinInput, newVal => {
+    let min = 0;
+    if (xMode.value == 'tan') {
+        min = Math.round((newVal - tanMin.value) / (tanMax.value - tanMin.value) * (dataSnapshot.value!.height - 1));
+    } else if (xMode.value == 'angle') {
+        let minAngle = Math.atan(tanMin.value) / Math.PI * 180;
+        let maxAngle = Math.atan(tanMax.value) / Math.PI * 180;
+        min = Math.round((newVal - minAngle) / (maxAngle - minAngle) * (dataSnapshot.value!.height - 1));
+    } else {
+        let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
+        let minK = 2 * Math.PI * tanMin.value / lambda * 1000;
+        let maxK = 2 * Math.PI * tanMax.value / lambda * 1000;
+        min = Math.round((newVal - minK) / (maxK - minK) * (dataSnapshot.value!.height - 1));
+    }
+    chart1.dispatchAction({
+        type: 'dataZoom',
+        dataZoomIndex: 0,
+        startValue: min,
+    });
+    // chart1.dispatchAction({
+    //     type: 'dataZoom',
+    //     dataZoomIndex: 2,
+    //     startValue: newVal,
+    // });
+    chart1.dispatchAction({
+        type: 'dataZoom',
+        dataZoomIndex: 5,
+        startValue: newVal,
+    });
+});
+
+watch(xMaxInput, newVal => {
+    let max = 0;
+    if (xMode.value == 'tan') {
+        max = Math.round((newVal - tanMin.value) / (tanMax.value - tanMin.value) * (dataSnapshot.value!.height - 1));
+    } else if (xMode.value == 'angle') {
+        let minAngle = Math.atan(tanMin.value) / Math.PI * 180;
+        let maxAngle = Math.atan(tanMax.value) / Math.PI * 180;
+        max = Math.round((newVal - minAngle) / (maxAngle - minAngle) * (dataSnapshot.value!.height - 1));
+    } else {
+        // let lambda = EV_MODE ? CONST_1240 / yMaxInput.value : yMinInput.value;
+        let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
+        let minK = 2 * Math.PI * tanMin.value / lambda * 1000;
+        let maxK = 2 * Math.PI * tanMax.value / lambda * 1000;
+        max = Math.round((newVal - minK) / (maxK - minK) * (dataSnapshot.value!.height - 1));
+    }
+    chart1.dispatchAction({
+        type: 'dataZoom',
+        dataZoomIndex: 0,
+        endValue: max,
+    });
+    // chart1.dispatchAction({
+    //     type: 'dataZoom',
+    //     dataZoomIndex: 2,
+    //     endValue: newVal,
+    // });
+    chart1.dispatchAction({
+        type: 'dataZoom',
+        dataZoomIndex: 5,
+        endValue: newVal,
+    });
+});
+
+watch(xMode, (newMode, oldMode) => {
+    let newMin = 0;
+    let newMax = 0;
+    if (newMode == 'angle' && oldMode == 'tan') {
+        newMin = Math.atan(xMinInput.value) / Math.PI * 180;
+        newMax = Math.atan(xMaxInput.value) / Math.PI * 180;
+    }
+    let lambda = EV_MODE ? CONST_1240 / yMinInput.value : yMaxInput.value;
+    // let lambda = EV_MODE ? CONST_1240 / yMaxInput.value : yMinInput.value;
+    // let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
+    if (newMode == 'k' && oldMode == 'tan') {
+        newMin = 2 * Math.PI * xMinInput.value / lambda * 1000;
+        newMax = 2 * Math.PI * xMaxInput.value / lambda * 1000;
+    }
+    if (oldMode == 'angle') {
+        newMin = Math.tan(xMinInput.value / 180 * Math.PI);
+        newMax = Math.tan(xMaxInput.value / 180 * Math.PI);
+        if (newMode == 'k') {
+            newMin /= lambda / (1000 * 2 * Math.PI);
+            newMax /= lambda / (1000 * 2 * Math.PI);
+        }
+    }
+    if (oldMode == 'k') {
+        newMin = xMinInput.value * lambda / (1000 * 2 * Math.PI);
+        newMax = xMaxInput.value * lambda / (1000 * 2 * Math.PI);
+        if (newMode == 'angle') {
+            newMin = Math.atan(newMin) / Math.PI * 180;
+            newMax = Math.atan(newMax) / Math.PI * 180;
+        }
+    }
+    X_RANGE_BUFFER = [newMin, newMax];
+    axesChanged();
+})
+
 watch(yMinIndex, newIndex => {
     chart1.dispatchAction({
         type: 'dataZoom',
@@ -183,13 +306,13 @@ watch(yMinIndex, newIndex => {
     chart1.dispatchAction({
         type: 'dataZoom',
         dataZoomIndex: 3,
-        startValue: yMinLambda.value,
+        startValue: yMinInput.value,
     });
     if (prop.data!.wavelength) {
         chart1.dispatchAction({
             type: 'dataZoom',
             dataZoomIndex: 4,
-            endValue: yMaxEnergy.value,
+            endValue: EV_MODE ? yMaxInput.value : CONST_1240 / yMinInput.value,
         });
     }
 })
@@ -203,42 +326,42 @@ watch(yMaxIndex, newIndex => {
     chart1.dispatchAction({
         type: 'dataZoom',
         dataZoomIndex: 3,
-        endValue: yMaxLambda.value,
+        endValue: yMaxInput.value,
     });
     if (prop.data!.wavelength) {
         chart1.dispatchAction({
             type: 'dataZoom',
             dataZoomIndex: 4,
-            startValue: yMinEnergy.value,
+            startValue: EV_MODE ? yMinInput.value : CONST_1240 / yMaxInput.value,
         });
     }
 })
 
-watch(yAxisMode, isWavelength => {
-    let yAxisOptions = (chart1.getOption().yAxis as { [key: string]: any }[]);
-    yAxisOptions[0].inverse = !isWavelength;
-    yAxisOptions[1].show = isWavelength;
-    yAxisOptions[2].show = !isWavelength;
-    chart1.setOption({
-        yAxis: yAxisOptions
-    });
-})
+function axesChanged() {
+    if (bindingLock.value) {
+        emit('stretch', EV_MODE, xMode.value, tanMin.value, tanMax.value);
+    } else {
+        emit('stretch', EV_MODE, xMode.value, 0, prop.data!.height - 1);
+    }
+}
 
 function resetYRange() {
     if (dataSnapshot.value!.wavelength) {
-        yMinLambda.value = dataSnapshot.value!.wavelength[0];
-        yMaxLambda.value = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
+        let minLambda = dataSnapshot.value!.wavelength[0];
+        let maxLambda = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
+        yMinInput.value = EV_MODE ? CONST_1240 / maxLambda : minLambda;
+        yMaxInput.value = EV_MODE ? CONST_1240 / minLambda : maxLambda;
     } else {
-        yMinLambda.value = 0;
-        yMaxLambda.value = prop.data!.width - 1;
+        yMinInput.value = 0;
+        yMaxInput.value = prop.data!.width - 1;
     }
 }
-function resetXRange() {
+function resetXIndex() {
     xMinIndex.value = 0;
     xMaxIndex.value = prop.data!.height - 1;
 }
 function resetNABinding() {
-    bindingNA.value = '';
+    inputNA.value = '';
 }
 
 function copyToClipboard() {
@@ -247,14 +370,14 @@ function copyToClipboard() {
     emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格', 'ok');
     let str = '';
     if (prop.data!.wavelength) {
-        str = `${bindingNA.value ? 'tan(θ)' : 'Index'}\t${yAxisMode.value ? 'Wavelength' : 'Energy'}\tcounts
-                \t${yAxisMode.value ? 'nm' : 'eV'}\n\n`;
+        str = `${inputNA.value ? 'tan(θ)' : 'Index'}\t${EV_MODE ? 'Energy' : 'Wavelength'}\tcounts
+                \t${EV_MODE ? 'eV' : 'nm'}\n\n`;
     } else {
-        str = `${bindingNA.value ? 'tan(θ)' : 'Index'}\t\tcounts\n\n\n`;
+        str = `${inputNA.value ? 'tan(θ)' : 'Index'}\t\tcounts\n\n\n`;
     }
 
-    if (bindingNA.value) {
-        let tan = Math.tan(Math.asin(bindingNA.value));
+    if (inputNA.value) {
+        let tan = Math.tan(Math.asin(inputNA.value));
         let height = xMaxIndex.value - xMinIndex.value + 1;
         let d = 2 * tan / (height - 1);
         for (var a = 0; a < height; a++) {
@@ -266,8 +389,8 @@ function copyToClipboard() {
         }
     }
     str += '\n';
-    let yMin = yMinLambda.value;
-    let yMax = yMaxLambda.value;
+    let yMin = yMinInput.value;
+    let yMax = yMaxInput.value;
     if (prop.data!.wavelength) {
         let min = prop.data!.wavelength[0];
         let max = prop.data!.wavelength[prop.data!.width - 1];
@@ -276,7 +399,7 @@ function copyToClipboard() {
     }
     for (var i = yMin; i <= yMax; i++) {
         if (prop.data!.wavelength) {
-            str += `${yAxisMode.value ? prop.data!.wavelength[i] : (CONST_1240 / prop.data!.wavelength[i])}`;
+            str += `${EV_MODE ? (CONST_1240 / prop.data!.wavelength[i]) : prop.data!.wavelength[i]}`;
         }
         for (var j = xMinIndex.value; j <= xMaxIndex.value; j++) {
             str += `\t${prop.data!.frame[frameIndex.value][j * prop.data!.width + i]}`;
@@ -306,8 +429,7 @@ function copyToClipboard() {
         <button style="grid-column-start: 2;" @click="copyToClipboard" title="复制数据到剪贴板">
             <IconCopy />
         </button>
-        <button id="save-ar-spec" style="grid-column-start: 3;"
-        @click="saveImage(chart1, `角分辨光谱-${prop.name}`, !prop.data, silentPath).then(msg => {
+        <button id="save-ar-spec" style="grid-column-start: 3;" @click="saveImage(chart1, `角分辨光谱-${prop.name}`, !prop.data, silentPath).then(msg => {
             if (msg) { emit('show-message', msg, 'ok') }
         })" title="导出图片">
             <IconExport />
@@ -315,39 +437,52 @@ function copyToClipboard() {
     </div>
     <div id="arspc-options" @mouseover="focusing = true" @mouseleave="focusing = false"
         :class="['container', focusing ? 'container-focus' : '']">
-        <ModeSwitch v-if="prop.data?.wavelength" :name="'纵轴模式'" :mode1="'波长'" :mode2="'能量'" v-model="yAxisMode" />
-        <div class="range-input-lambda" v-show="yAxisMode">
-            <label for="y-min-lambda">纵轴范围</label>
+        <div class="range-input-y">
+            <label for="y-min-input">纵轴范围</label>
             <button @click="resetYRange" title="重置">
                 <IconReset />
             </button>
-            <input id="y-min-lambda" type="text" v-model.number="yMinLambda">
-            <label for="y-max-lambda">~</label>
-            <input id="y-max-lambda" type="text" v-model.number="yMaxLambda">
+            <input id="y-min-input" type="text" v-model.number="yMinInput">
+            <label for="y-max-input">~</label>
+            <input id="y-max-input" type="text" v-model.number="yMaxInput">
+            <select v-if="prop.data?.wavelength" v-model="EV_MODE" @change="axesChanged">
+                <option :value="false">nm</option>
+                <option :value="true">eV</option>
+            </select>
         </div>
-        <div class="range-input-energy" v-show="!yAxisMode">
-            <label for="y-min-energy">纵轴范围</label>
-            <button @click="resetYRange" title="重置">
+        <div class="x-binding-input">
+            <label for="x-min-index">横轴索引</label>
+            <button @click="resetXIndex" title="重置">
                 <IconReset />
             </button>
-            <input id="y-min-energy" type="text" v-model.number="yMinEnergy">
-            <label for="y-max-energy">~</label>
-            <input id="y-max-energy" type="text" v-model.number="yMaxEnergy">
-        </div>
-        <div class="range-input-x">
-            <label for="x-min-index">横轴范围</label>
-            <button @click="resetXRange" title="重置">
-                <IconReset />
-            </button>
-            <input id="x-min-index" type="number" v-model.number="xMinIndex">
+            <input id="x-min-index" type="number" v-model.number="xMinIndex" :disabled="bindingLock">
             <label for="x-max-index">~</label>
-            <input id="x-max-index" type="number" v-model.number="xMaxIndex">
-            <p>(索引)</p>
-            <label for="binding-na" style="grid-column-start: 1">NA 绑定</label>
+            <input id="x-max-index" type="number" v-model.number="xMaxIndex" :disabled="bindingLock">
+            <label for="NA-input" style="grid-column-start: 1">NA</label>
             <button @click="resetNABinding" title="重置">
                 <IconReset />
             </button>
-            <input id="binding-na" type="text" v-model.number="bindingNA">
+            <input id="NA-input" type="text" v-model.number="inputNA" :disabled="bindingLock">
+            <button v-show="inputNA" :class="bindingLock ? 'button-active' : ''" style="grid-column-start: 5;"
+                @click="bindingLock = !bindingLock" :title="bindingLock ? '解绑' : '绑定'">
+                <IconLock v-show="bindingLock" />
+                <IconUnlock v-show="!bindingLock" />
+                ⤴️
+            </button>
+        </div>
+        <div v-if="bindingLock" class="range-input-x">
+            <label for="x-min-input">横轴范围</label>
+            <button @click="" title="重置">
+                <IconReset />
+            </button>
+            <input id="x-min-input" type="text" v-model.number="xMinInput">
+            <label for="x-max-input">~</label>
+            <input id="x-max-input" type="text" v-model.number="xMaxInput">
+            <select v-model="xMode">
+                <option value="tan">tan(θ)</option>
+                <option value="angle">°</option>
+                <option v-if="prop.data?.wavelength" value="k">k</option>
+            </select>
         </div>
     </div>
 </template>
@@ -398,24 +533,24 @@ function copyToClipboard() {
     overflow-x: hidden;
 }
 
-.range-input-lambda,
-.range-input-energy {
+.range-input-y,
+.range-input-x {
     display: flex;
     gap: 1mm;
     justify-content: left;
     align-items: center;
 }
 
-.range-input-x {
+.x-binding-input {
     display: grid;
-    grid-template-columns: repeat(6, auto);
+    grid-template-columns: repeat(5, auto);
     grid-row: repeat(2, auto);
     gap: 1mm;
     justify-content: left;
     align-items: center;
 }
 
-.range-input-x p {
+.x-binding-input p {
     user-select: none;
     -webkit-user-select: none;
     cursor: default;
