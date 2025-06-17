@@ -40,6 +40,7 @@ const xMaxIndex = ref();
 const bindingLock = ref(false);
 const xMode = ref('tan');
 var X_RANGE_BUFFER = [0, 0];
+var X_INDEX_RANGE = [0, 0];
 const xMinInput = ref();
 const xMaxInput = ref();
 
@@ -47,37 +48,7 @@ const eVMode = ref(false);
 var EV_MODE = false;
 const yMinInput = ref();
 const yMaxInput = ref();
-
-const yMinIndex = computed(() => {
-    if (dataSnapshot.value) {
-        if (dataSnapshot.value.wavelength && !EV_MODE) {
-            let min = dataSnapshot.value.wavelength[0];
-            let max = dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
-            return Math.round((yMinInput.value - min) / (max - min) * (dataSnapshot.value.width - 1));
-        } else if (dataSnapshot.value.wavelength && EV_MODE) {
-            let max = CONST_1240 / dataSnapshot.value.wavelength[0];
-            let min = CONST_1240 / dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
-            return Math.round((max - yMaxInput.value) / (max - min) * (dataSnapshot.value.width - 1));
-        } else {
-            return Math.round(yMinInput.value / (prop.data!.width - 1) * (dataSnapshot.value.width - 1));
-        }
-    }
-});
-const yMaxIndex = computed(() => {
-    if (dataSnapshot.value) {
-        if (dataSnapshot.value.wavelength && !EV_MODE) {
-            let min = dataSnapshot.value.wavelength[0];
-            let max = dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
-            return Math.round((yMaxInput.value - min) / (max - min) * (dataSnapshot.value.width - 1));
-        } else if (dataSnapshot.value.wavelength && EV_MODE) {
-            let max = CONST_1240 / dataSnapshot.value.wavelength[0];
-            let min = CONST_1240 / dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
-            return Math.round((max - yMinInput.value) / (max - min) * (dataSnapshot.value.width - 1));
-        } else {
-            return Math.round(yMaxInput.value / (prop.data!.width - 1) * (dataSnapshot.value.width - 1));
-        }
-    }
-});
+var Y_INDEX_RANGE = [0, 0];
 
 onMounted(() => {
     chart1 = echarts.init(arspc.value! as HTMLDivElement);
@@ -174,6 +145,7 @@ watch(bindingLock, locked => {
 })
 
 watch(xMinIndex, newIndex => {
+    X_INDEX_RANGE[0] = newIndex;
     let min = Math.round(newIndex / (prop.data!.height - 1) * (dataSnapshot.value!.height - 1));
     chart1.dispatchAction({
         type: 'dataZoom',
@@ -188,6 +160,7 @@ watch(xMinIndex, newIndex => {
 });
 
 watch(xMaxIndex, newIndex => {
+    X_INDEX_RANGE[1] = newIndex;
     let max = Math.round(newIndex / (prop.data!.height - 1) * (dataSnapshot.value!.height - 1));
     chart1.dispatchAction({
         type: 'dataZoom',
@@ -220,11 +193,7 @@ watch(xMinInput, newVal => {
         dataZoomIndex: 0,
         startValue: min,
     });
-    // chart1.dispatchAction({
-    //     type: 'dataZoom',
-    //     dataZoomIndex: 2,
-    //     startValue: newVal,
-    // });
+    X_INDEX_RANGE[0] = min;
     chart1.dispatchAction({
         type: 'dataZoom',
         dataZoomIndex: 5,
@@ -251,11 +220,7 @@ watch(xMaxInput, newVal => {
         dataZoomIndex: 0,
         endValue: max,
     });
-    // chart1.dispatchAction({
-    //     type: 'dataZoom',
-    //     dataZoomIndex: 2,
-    //     endValue: newVal,
-    // });
+    X_INDEX_RANGE[1] = max;
     chart1.dispatchAction({
         type: 'dataZoom',
         dataZoomIndex: 5,
@@ -299,44 +264,80 @@ watch(xMode, (newMode, oldMode) => {
     axesChanged();
 })
 
-watch(yMinIndex, newIndex => {
-    chart1.dispatchAction({
-        type: 'dataZoom',
-        dataZoomIndex: 1,
-        startValue: newIndex,
-    });
-    chart1.dispatchAction({
-        type: 'dataZoom',
-        dataZoomIndex: 3,
-        startValue: yMinInput.value,
-    });
-    if (prop.data!.wavelength) {
+watch(yMinInput, newInput => {
+    let dzi = 3;
+    if (dataSnapshot.value && dataSnapshot.value.wavelength) {
+        if (!EV_MODE) {
+            let min = dataSnapshot.value.wavelength[0];
+            let max = dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
+            chart1.dispatchAction({
+                type: 'dataZoom',
+                dataZoomIndex: 1,
+                startValue: Math.round((newInput - min) / (max - min) * (dataSnapshot.value.width - 1)),
+            });
+            Y_INDEX_RANGE[0] = Math.round((newInput - min) / (max - min) * (prop.data!.width - 1));
+        } else {
+            let max = CONST_1240 / dataSnapshot.value.wavelength[0];
+            let min = CONST_1240 / dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
+            chart1.dispatchAction({
+                type: 'dataZoom',
+                dataZoomIndex: 1,
+                endValue: Math.round((max - newInput) / (max - min) * (dataSnapshot.value.width - 1)),
+            });
+            Y_INDEX_RANGE[1] = Math.round((max - newInput) / (max - min) * (prop.data!.width - 1));
+            dzi = 4;   
+        }
+    } else if (dataSnapshot.value) {
         chart1.dispatchAction({
             type: 'dataZoom',
-            dataZoomIndex: 4,
-            endValue: eVMode.value ? yMaxInput.value : CONST_1240 / yMinInput.value,
+            dataZoomIndex: 1,
+            startValue: Math.round(newInput / (prop.data!.width - 1) * (dataSnapshot.value.width - 1)),
         });
+        Y_INDEX_RANGE[0] = newInput;
     }
+    chart1.dispatchAction({
+        type: 'dataZoom',
+        dataZoomIndex: dzi,
+        startValue: newInput,
+    });
 })
 
-watch(yMaxIndex, newIndex => {
-    chart1.dispatchAction({
-        type: 'dataZoom',
-        dataZoomIndex: 1,
-        endValue: newIndex,
-    });
-    chart1.dispatchAction({
-        type: 'dataZoom',
-        dataZoomIndex: 3,
-        endValue: yMaxInput.value,
-    });
-    if (prop.data!.wavelength) {
+watch(yMaxInput, newInput => {
+    let dzi = 3;
+    if (dataSnapshot.value && dataSnapshot.value.wavelength) {
+        if (!EV_MODE) {
+            let min = dataSnapshot.value.wavelength[0];
+            let max = dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
+            chart1.dispatchAction({
+                type: 'dataZoom',
+                dataZoomIndex: 1,
+                endValue: Math.round((newInput - min) / (max - min) * (dataSnapshot.value.width - 1)),
+            });
+            Y_INDEX_RANGE[1] = Math.round((newInput - min) / (max - min) * (prop.data!.width - 1));
+        } else {
+            let max = CONST_1240 / dataSnapshot.value.wavelength[0];
+            let min = CONST_1240 / dataSnapshot.value.wavelength[dataSnapshot.value!.width - 1];
+            chart1.dispatchAction({
+                type: 'dataZoom',
+                dataZoomIndex: 1,
+                startValue: Math.round((max - newInput) / (max - min) * (dataSnapshot.value.width - 1)),
+            });     
+            Y_INDEX_RANGE[0] = Math.round((max - newInput) / (max - min) * (prop.data!.width - 1));
+            dzi = 4
+        }
+    } else if (dataSnapshot.value) {
         chart1.dispatchAction({
             type: 'dataZoom',
-            dataZoomIndex: 4,
-            startValue: eVMode.value ? yMinInput.value : CONST_1240 / yMaxInput.value,
+            dataZoomIndex: 1,
+            endValue: Math.round(newInput / (prop.data!.width - 1) * (dataSnapshot.value.width - 1)),
         });
+        Y_INDEX_RANGE[1] = newInput;
     }
+    chart1.dispatchAction({
+        type: 'dataZoom',
+        dataZoomIndex: dzi,
+        endValue: newInput,
+    });
 })
 
 function axesChanged() {
@@ -394,39 +395,46 @@ function copyToClipboard() {
 
     emit('show-message', '数据已复制到剪贴板，可在Origin直接粘贴表格', 'ok');
     let str = '';
-    if (prop.data!.wavelength) {
-        str = `${inputNA.value ? 'tan(θ)' : 'Index'}\t${eVMode.value ? 'Energy' : 'Wavelength'}\tcounts
-                \t${eVMode.value ? 'eV' : 'nm'}\n\n`;
-    } else {
-        str = `${inputNA.value ? 'tan(θ)' : 'Index'}\t\tcounts\n\n\n`;
+    let xName = 'Index';
+    let xUnit = '';
+    if (bindingLock.value) {
+        switch (xMode.value) {
+            case 'tan': xName = 'tan(θ)';
+                break;
+            case 'angle': xName = 'θ';
+                xUnit = '°'
+                break;
+            case 'k': xName = 'k';
+                xUnit = 'μm^-1'
+                break;
+        }
     }
+    let yName = '';
+    let yUnit = '';
+    if (prop.data.wavelength) {
+        yName = EV_MODE ? 'Energy' : 'Wavelength';
+        yUnit = EV_MODE ? 'eV' : 'nm';
+    }
+    str = `${ xName }\t${ yName }\tcounts\n${ xUnit }\t${ yUnit }\n\n`;
 
-    if (inputNA.value) {
-        let tan = Math.tan(Math.asin(inputNA.value));
-        let height = xMaxIndex.value - xMinIndex.value + 1;
-        let d = 2 * tan / (height - 1);
-        for (var a = 0; a < height; a++) {
-            str += `\t${-tan + a * d}`;
+    if (bindingLock.value) {
+        let height = X_INDEX_RANGE[1] - X_INDEX_RANGE[0];
+        let d = (xMaxInput.value - xMinInput.value) / (height - 1);
+        for (var a = 0; a <= height; a++) {
+            str += `\t${xMinInput.value + a * d}`;
         }
     } else {
-        for (var b = xMinIndex.value; b <= xMaxIndex.value; b++) {
+        for (var b = X_INDEX_RANGE[0]; b <= X_INDEX_RANGE[1]; b++) {
             str += `\t${b}`;
         }
     }
     str += '\n';
-    let yMin = yMinInput.value;
-    let yMax = yMaxInput.value;
-    if (prop.data!.wavelength) {
-        let min = prop.data!.wavelength[0];
-        let max = prop.data!.wavelength[prop.data!.width - 1];
-        yMin = Math.round((yMin - min) / (max - min) * (prop.data!.width - 1));
-        yMax = Math.round((yMax - min) / (max - min) * (prop.data!.width - 1));
-    }
-    for (var i = yMin; i <= yMax; i++) {
+    
+    for (var i = Y_INDEX_RANGE[0]; i <= Y_INDEX_RANGE[1]; i++) {
         if (prop.data!.wavelength) {
             str += `${eVMode.value ? (CONST_1240 / prop.data!.wavelength[i]) : prop.data!.wavelength[i]}`;
         }
-        for (var j = xMinIndex.value; j <= xMaxIndex.value; j++) {
+        for (var j = X_INDEX_RANGE[0]; j <= X_INDEX_RANGE[1]; j++) {
             str += `\t${prop.data!.frame[frameIndex.value][j * prop.data!.width + i]}`;
         }
         str += '\n';
