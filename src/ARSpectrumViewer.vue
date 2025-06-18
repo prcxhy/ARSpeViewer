@@ -301,27 +301,34 @@ watch(() => prop.data, (newData, oldData) => {
                     });
                 }
             } else {
+                AXES_CHANGE_LOCK = true;
                 let info = compatible(newData, oldData, xMinIndex.value, xMaxIndex.value, yMinInput.value!, yMaxInput.value!);
                 if (!(newData.wavelength && oldData.wavelength)) {
                     eVMode.value = false;
                 }
-                yMinInput.value = eVMode.value ? CONST_1240 / info.yMax : info.yMin;
-                yMaxInput.value = eVMode.value ? CONST_1240 / info.yMin : info.yMax;
                 if (!info.xCompate) {
-                    xMinIndex.value = info.xMinIndex;
-                    xMaxIndex.value = info.xMaxIndex;
+                    xMode.value = 'tan';
                     bindingLock.value = false;
                 }
                 if (!info.yCompate && info.xCompate && xMode.value == 'k') {
                     xMode.value = 'tan';
                 }
-                drawARSpec(chart1, dataSnapshot.value!, {
-                    name: prop.name, frameIndex: frameIndex.value,
-                    eVMode: eVMode.value, xMode: xMode.value,
-                    yMin: 0, yMax: prop.data!.width - 1,
-                    xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
-                    xMin: tanMin.value, xMax: tanMax.value
-                });
+                yMinInput.value = eVMode.value ? CONST_1240 / info.yMax : info.yMin;
+                yMaxInput.value = eVMode.value ? CONST_1240 / info.yMin : info.yMax;
+                xMinIndex.value = info.xMinIndex;
+                xMaxIndex.value = info.xMaxIndex;
+                if (eVMode.value || xMode.value != 'tan') {
+                    axesChanged();
+                } else {
+                    drawARSpec(chart1, dataSnapshot.value!, {
+                        name: prop.name, frameIndex: frameIndex.value,
+                        eVMode: eVMode.value, xMode: xMode.value,
+                        yMin: 0, yMax: prop.data!.width - 1,
+                        xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
+                        xMin: tanMin.value, xMax: tanMax.value
+                    });
+                }
+                AXES_CHANGE_LOCK = false;
             }
         }
     })
@@ -399,7 +406,7 @@ watch(xMaxIndex, newIndex => {
     });
 });
 
-watch(xMode, axesChanged)
+var AXES_CHANGE_LOCK = false;
 
 function axesChanged() {
     if (bindingLock.value) {
@@ -409,9 +416,17 @@ function axesChanged() {
     }
 }
 
+watch(xMode, () => {
+    if (!AXES_CHANGE_LOCK) {
+        axesChanged()
+    }
+})
+
 watch(eVMode, newVal => {
     EV_MODE = newVal;
-    axesChanged();
+    if (!AXES_CHANGE_LOCK) {
+        axesChanged();
+    }
 })
 
 function resetYRange() {
