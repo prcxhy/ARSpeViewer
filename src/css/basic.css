@@ -64,14 +64,15 @@ input[type="text"] {
     border-radius: 1mm;
     border-width: 0px;
     outline-width: 0px;
-    max-width: 12mm;
+    max-width: 20mm;
+    width: 13mm;
     height: 5.4mm;
 }
 
 select {
     padding: 0px;
     height: 7.4mm;
-    width: 16mm;
+    width: 19mm;
 }
 
 select:focus,

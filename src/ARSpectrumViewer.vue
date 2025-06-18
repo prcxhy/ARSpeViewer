@@ -466,7 +466,7 @@ function copyToClipboard() {
                 xUnit = '°'
                 break;
             case 'k': xName = 'k';
-                xUnit = 'μm^-1'
+                xUnit = 'μm⁻¹'
                 break;
         }
     }
@@ -516,7 +516,7 @@ function copyToClipboard() {
             </div>
             <div v-show="prop.data" ref="arspc" id="ar-spectral"></div>
         </div>
-        <Transition name="pagination">
+        <Transition name="fade">
             <Pagination v-if="prop.data && prop.data.frame.length > 1" :length="prop.data.frame.length"
                 v-model="frameIndex" style="grid-column-start: 1;" />
         </Transition>
@@ -564,20 +564,22 @@ function copyToClipboard() {
                 ⤴️
             </button>
         </div>
-        <div v-if="bindingLock" class="range-input-x">
-            <label for="x-min-input">横轴范围</label>
-            <button @click="resetXRange" title="重置">
-                <IconReset />
-            </button>
-            <input id="x-min-input" type="text" v-model.number="xMinInput">
-            <label for="x-max-input">~</label>
-            <input id="x-max-input" type="text" v-model.number="xMaxInput">
-            <select v-model="xMode">
-                <option value="tan">tan(θ)</option>
-                <option value="angle">°</option>
-                <option v-if="prop.data?.wavelength" value="k">μm^-1(k)</option>
-            </select>
-        </div>
+        <Transition name="fade">
+            <div v-if="bindingLock" class="range-input-x">
+                <label for="x-min-input">横轴范围</label>
+                <button @click="resetXRange" title="重置">
+                    <IconReset />
+                </button>
+                <input id="x-min-input" type="text" v-model.number="xMinInput">
+                <label for="x-max-input">~</label>
+                <input id="x-max-input" type="text" v-model.number="xMaxInput">
+                <select v-model="xMode">
+                    <option value="tan">tan(θ)</option>
+                    <option value="angle">° (角度)</option>
+                    <option v-if="prop.data?.wavelength" value="k">μm⁻¹ (k)</option>
+                </select>
+            </div>
+        </Transition>
     </div>
 </template>
 
@@ -599,13 +601,13 @@ function copyToClipboard() {
     overflow: auto;
 }
 
-.pagination-enter-active,
-.pagination-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: all 0.3s ease;
 }
 
-.pagination-enter-from,
-.pagination-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
   transform: translateY(-10px);
 }

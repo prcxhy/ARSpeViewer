@@ -327,7 +327,7 @@ async function drawARSpec(
                 xMin = Math.atan(info.xMin) / Math.PI * 180;
                 xMax = Math.atan(info.xMax) / Math.PI * 180;
                 break;
-            case 'k': xName = 'k (μm^-1)';
+            case 'k': xName = 'k (μm⁻¹)';
                 xMin = 2 * Math.PI * info.xMin / yData![yLength - 1] * 1000;
                 xMax = 2 * Math.PI * info.xMax / yData![yLength - 1] * 1000;
                 break;
