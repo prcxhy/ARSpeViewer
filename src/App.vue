@@ -13,7 +13,11 @@ import { listen } from "@tauri-apps/api/event";
 
 const workingPath = ref("");
 
-const speData = ref<SpeData>();
+const newlyOpen = ref(false);
+
+var speDataRaw: SpeData;
+
+const speDataShow = ref<SpeData>();
 
 const fileName = ref('');
 
@@ -41,7 +45,9 @@ async function openFromPath(filePath: string) {
     
       workingPath.value = filePath;
 
-      speData.value = JSON.parse(str as string) as SpeData;
+      speDataRaw = JSON.parse(str as string) as SpeData;
+      speDataShow.value = speDataRaw;
+      newlyOpen.value = true;
     }).catch((msg) => {
       showMessage(msg, 'error');
     });
@@ -95,6 +101,23 @@ onMounted(async () => {
     // }
   });
 })
+
+function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number) {
+  newlyOpen.value = false;
+  if (!eVMode && xMode == 'tan') {
+    speDataShow.value = speDataRaw;
+  } else {
+    invoke('stretch', {
+        speStr: JSON.stringify(speDataRaw),
+        evMode: eVMode,
+        xMode: xMode,
+        tanMin: tanMin,
+        tanMax: tanMax
+    }).then(newData => {
+      speDataShow.value = JSON.parse(newData as string);
+    });
+  }
+}
 </script>
 
 <template>
@@ -112,9 +135,9 @@ onMounted(async () => {
     </Transition>
   </Teleport>
   <div id="content" @dragover.prevent="" @drop="dropToOpen">
-    <ARSpectrumViewer :data="speData" :name="fileName" :path="workingPath" v-model="frameIndex" @show-message="showMessage"
-      @slice-at-index="index => sliceIndex = index" />
-    <SpectrumViewer :data="speData" :name="fileName" :frame-index="frameIndex" v-model="sliceIndex"
+    <ARSpectrumViewer :data="speDataShow" :name="fileName" :path="workingPath" :newly-open="newlyOpen" v-model="frameIndex" @show-message="showMessage"
+      @slice-at-index="index => sliceIndex = index" @stretch="stretch"/>
+    <SpectrumViewer :data="speDataShow" :name="fileName" :frame-index="frameIndex" v-model="sliceIndex"
       @show-message="showMessage" />
   </div>
 </template>

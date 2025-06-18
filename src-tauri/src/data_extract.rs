@@ -1,20 +1,20 @@
 use quick_xml::{events::Event, name::QName, reader::Reader};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
-#[derive(Serialize)]
-struct SpeData {
-    min_max: Vec<Vec<f32>>,
-    frame: Vec<Vec<f32>>,
-    width: usize,
-    height: usize,
-    wavelength: Option<Vec<f64>>,
-    detector_angle_cal: f64,
-    focal_length_cal: f64,
-    inclusion_angle_cal: f64,
-    detector_angle_exp: f64,
-    focal_length_exp: f64,
-    inclusion_angle_exp: f64,
+#[derive(Serialize, Deserialize)]
+pub struct SpeData {
+    pub min_max: Vec<Vec<f64>>,
+    pub frame: Vec<Vec<f64>>,
+    pub width: usize,
+    pub height: usize,
+    pub wavelength: Option<Vec<f64>>,
+    pub detector_angle_cal: f64,
+    pub focal_length_cal: f64,
+    pub inclusion_angle_cal: f64,
+    pub detector_angle_exp: f64,
+    pub focal_length_exp: f64,
+    pub inclusion_angle_exp: f64,
 }
 
 impl SpeData {
@@ -38,8 +38,8 @@ impl SpeData {
             .frame
             .iter()
             .map(|one_frame| {
-                let mut max: f32 = one_frame[0];
-                let mut min: f32 = one_frame[0];
+                let mut max: f64 = one_frame[0];
+                let mut min: f64 = one_frame[0];
                 for val in one_frame {
                     if val > &max {
                         max = *val
@@ -81,26 +81,26 @@ fn parse_spe(data_vec: Vec<u8>) -> String {
             if number_bytes == 2 {
                 let one_frame = frame
                     .chunks(2)
-                    .map(|piece| i16::from_le_bytes([piece[0], piece[1]]) as f32)
-                    .collect::<Vec<f32>>();
+                    .map(|piece| i16::from_le_bytes([piece[0], piece[1]]) as f64)
+                    .collect::<Vec<f64>>();
                 return one_frame;
             } else if test_f32 < 1e-8 {
                 let one_frame = frame
                     .chunks(4)
                     .map(|piece| {
-                        i32::from_le_bytes([piece[0], piece[1], piece[2], piece[3]]) as f32
+                        i32::from_le_bytes([piece[0], piece[1], piece[2], piece[3]]) as f64
                     })
-                    .collect::<Vec<f32>>();
+                    .collect::<Vec<f64>>();
                 return one_frame;
             } else {
                 let one_frame = frame
                     .chunks(4)
-                    .map(|piece| f32::from_le_bytes([piece[0], piece[1], piece[2], piece[3]]))
-                    .collect::<Vec<f32>>();
+                    .map(|piece| f32::from_le_bytes([piece[0], piece[1], piece[2], piece[3]]) as f64)
+                    .collect::<Vec<f64>>();
                 return one_frame;
             }
         })
-        .collect::<Vec<Vec<f32>>>();
+        .collect::<Vec<Vec<f64>>>();
 
     spe_data.calc_maxs_mins();
 
@@ -173,7 +173,7 @@ fn parse_txt(data_text: String) -> Result<String, String> {
     let mut data_start_index: usize = 0;
     let mut row_major = true;
     let mut wavelength: Vec<f64> = Vec::new();
-    let mut counts_rows: Vec<Vec<f32>> = Vec::new();
+    let mut counts_rows: Vec<Vec<f64>> = Vec::new();
 
     for i in 0..rows.len() {
         if let Some((str_1, str_2)) = rows[i].trim().split_once(&['\t', ',', ';', ' '][..]) {
@@ -193,7 +193,7 @@ fn parse_txt(data_text: String) -> Result<String, String> {
                     spe_data.height = str_2_vec.len();
                     spe_data.width = 1;
                     str_2_vec.into_iter().for_each(|number_str| {
-                        counts_rows.push(vec![number_str.parse::<f32>().unwrap()])
+                        counts_rows.push(vec![number_str.parse::<f64>().unwrap()])
                     });
                 } else {
                     println!("wavelength is the first row");
@@ -212,7 +212,7 @@ fn parse_txt(data_text: String) -> Result<String, String> {
         return Err("未能解析到有效数据".to_string());
     }
 
-    let mut frame_data: Vec<f32> = Vec::new();
+    let mut frame_data: Vec<f64> = Vec::new();
 
     if row_major {
         for i in data_start_index..rows.len() {
@@ -222,7 +222,7 @@ fn parse_txt(data_text: String) -> Result<String, String> {
                 .collect::<Vec<&str>>();
             if number_strings.len() == spe_data.width {
                 number_strings.into_iter().for_each(|str| {
-                    frame_data.push(str.parse::<f32>().unwrap());
+                    frame_data.push(str.parse::<f64>().unwrap());
                 });
                 spe_data.height += 1;
             } else {
@@ -243,7 +243,7 @@ fn parse_txt(data_text: String) -> Result<String, String> {
                         if index == 0 {
                             wavelength.push(number_str.parse::<f64>().unwrap())
                         } else {
-                            counts_rows[index - 1].push(number_str.parse::<f32>().unwrap())
+                            counts_rows[index - 1].push(number_str.parse::<f64>().unwrap())
                         }
                     });
                 spe_data.width += 1;
@@ -251,7 +251,7 @@ fn parse_txt(data_text: String) -> Result<String, String> {
                 break;
             }
         }
-        frame_data = counts_rows.into_iter().flatten().collect::<Vec<f32>>();
+        frame_data = counts_rows.into_iter().flatten().collect::<Vec<f64>>();
     }
 
     spe_data.wavelength = Some(wavelength);

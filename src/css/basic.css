@@ -54,6 +54,7 @@ label {
     -webkit-user-select: none;
 }
 
+select,
 input[type="number"],
 input[type="text"] {
     background-color: var(--color-bg-10);
@@ -63,10 +64,18 @@ input[type="text"] {
     border-radius: 1mm;
     border-width: 0px;
     outline-width: 0px;
-    max-width: 12mm;
+    max-width: 20mm;
+    width: 13mm;
     height: 5.4mm;
 }
 
+select {
+    padding: 0px;
+    height: 7.4mm;
+    width: 19mm;
+}
+
+select:focus,
 input[type="number"]:focus,
 input[type="text"]:focus {
     color: black;
@@ -109,7 +118,7 @@ button {
     border-radius: 1mm;
     height: 7mm;
     gap: 1mm;
-    justify-items: center;
+    justify-content: center;
     align-items: center;
     transition: 0.3s;
     user-select: none;
@@ -123,6 +132,7 @@ button > svg {
     height: 5mm;
 }
 
+.button-active,
 button:hover {
     border: 1px solid var(--color-bg-10);
     background-color: var(--color-bg-9);
@@ -137,7 +147,8 @@ button:active {
     filter: drop-shadow(0px 0px 8px var(--color-bg-10));
 }
 
-button:disabled {
+button:disabled,
+input:disabled {
     opacity: 0.5;
 }
 
