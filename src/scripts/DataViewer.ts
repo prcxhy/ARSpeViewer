@@ -297,7 +297,7 @@ async function drawARSpec(
         eVMode: boolean, xMode: string,
         yMin: number, yMax: number,
         xMinIndex: number, xMaxIndex: number,
-        xMin?: number, xMax?: number
+        xMin?: number, xMax?: number,
     }
 ) {
     let data: number[][] = [];
@@ -314,14 +314,13 @@ async function drawARSpec(
         }
     }
 
-    let xName = 'Index';
+    let xName = 'tan(θ)';
     let xMin = 0;
     let xMax = xLength - 1;
 
     if (info.xMin && info.xMax) {
         switch (info.xMode) {
-            case 'tan': xName = 'tan(θ)';
-                xMin = info.xMin;
+            case 'tan': xMin = info.xMin;
                 xMax = info.xMax;
                 break;
             case 'angle': xName = 'θ (°)';
