@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onMounted, Ref, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, nextTick, onMounted, reactive, Ref, ref, useTemplateRef, watch } from 'vue';
 import * as echarts from 'echarts';
 import { downSampling, drawARSpec, SpeData, saveImage, CONST_1240, compatible } from './scripts/DataViewer';
 import Pagination from './components/Pagination.vue';
@@ -10,6 +10,7 @@ import IconReset from './assets/undo.svg?component';
 import IconLock from './assets/lock.svg?component';
 import IconUnlock from './assets/unlock.svg?component';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { XRange, YRange } from './scripts/ParametersConvert';
 
 const prop = defineProps<{
     data?: SpeData
@@ -40,210 +41,155 @@ const xMinIndex = ref();
 const xMaxIndex = ref();
 const bindingLock = ref(false);
 const xMode = ref('tan');
-var X_MIN_BUFFER = [0, 0, 0];
-var X_MAX_BUFFER = [0, 0, 0];
-var X_INDEX_RANGE = [0, 0];
-var X_SNAPSHOT_INDEX_RANGE = [0, 0];
+const inputNA = ref();
+var GLOBAL_RANGE_X = computed(() => {
+    return new XRange(
+        inputNA.value,
+        prop.data!.wavelength ? prop.data!.wavelength[prop.data!.width - 1] : prop.data!.width - 1,
+        [xMinIndex.value, xMaxIndex.value, prop.data!.height - 1]);
+});
+var INPUT_RANGE_X = reactive<XRange>(new XRange(1, 1000));
 const xMinInput = computed({
     get: () => {
         switch (xMode.value) {
-            case 'tan': return X_MIN_BUFFER[0];
-            case 'angle': return X_MIN_BUFFER[1];
-            case 'k': return X_MIN_BUFFER[2];
+            case 'tan': return INPUT_RANGE_X.minTan;
+            case 'angle': return INPUT_RANGE_X.minAngle;
+            case 'k': return INPUT_RANGE_X.minK;
         }
     },
     set: (val: number) => {
-        let min = 0;
+        let indexRange: number[] = [];
         switch (xMode.value) {
-            case 'tan': X_MIN_BUFFER[0] = val;
-                X_MIN_BUFFER[1] = Math.atan(val) / Math.PI * 180;
-                if (dataSnapshot.value!.wavelength) {
-                    let lambda = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
-                    X_MIN_BUFFER[2] = 2 * Math.PI * val / lambda * 1000;
-                }
-                min = Math.round((val - tanMin.value) / (tanMax.value - tanMin.value) * (dataSnapshot.value!.height - 1));
+            case 'tan': INPUT_RANGE_X.minTan = val;
+                indexRange = INPUT_RANGE_X.indexRangeOfTanIn(GLOBAL_RANGE_X.value, dataSnapshot.value!.height - 1)
                 break;
-            case 'angle': X_MIN_BUFFER[1] = val;
-                X_MIN_BUFFER[0] = Math.tan(val * Math.PI / 180);
-                if (dataSnapshot.value!.wavelength) {
-                    let lambda = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
-                    X_MIN_BUFFER[2] = 2 * Math.PI * X_MIN_BUFFER[0] / lambda * 1000;
-                }
-                let minAngle = Math.atan(tanMin.value) / Math.PI * 180;
-                let maxAngle = Math.atan(tanMax.value) / Math.PI * 180;
-                min = Math.round((val - minAngle) / (maxAngle - minAngle) * (dataSnapshot.value!.height - 1));
+            case 'angle': INPUT_RANGE_X.minAngle = val;
+                indexRange = INPUT_RANGE_X.indexRangeOfAngleIn(GLOBAL_RANGE_X.value, dataSnapshot.value!.height - 1)
                 break;
-            case 'k': X_MIN_BUFFER[2] = val;
-                let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
-                X_MIN_BUFFER[0] = val * lambda / (1000 * 2 * Math.PI);
-                X_MIN_BUFFER[1] = Math.atan(X_MIN_BUFFER[0]) / Math.PI * 180;
-                let minK = 2 * Math.PI * tanMin.value / lambda * 1000;
-                let maxK = 2 * Math.PI * tanMax.value / lambda * 1000;
-                min = Math.round((val - minK) / (maxK - minK) * (dataSnapshot.value!.height - 1));
+            case 'k': INPUT_RANGE_X.minK = val;
+                indexRange = INPUT_RANGE_X.indexRangeOfKIn(GLOBAL_RANGE_X.value, dataSnapshot.value!.height - 1)
                 break;
         }
+
         chart1.dispatchAction({
             type: 'dataZoom',
             batch: [{
                 dataZoomIndex: 0,
-                startValue: min,
+                startValue: indexRange[0],
             }, {
                 dataZoomIndex: 5,
                 startValue: val,
             }]
         });
-        X_INDEX_RANGE[0] = min;
     }
 });
 
 const xMaxInput = computed({
-    get: () => {switch (xMode.value) {
-            case 'tan': return X_MAX_BUFFER[0];
-            case 'angle': return X_MAX_BUFFER[1];
-            case 'k': return X_MAX_BUFFER[2];
+    get: () => {
+        switch (xMode.value) {
+            case 'tan': return INPUT_RANGE_X.maxTan;
+            case 'angle': return INPUT_RANGE_X.maxAngle;
+            case 'k': return INPUT_RANGE_X.maxK;
         }
     },
     set: (val: number) => {
-        let max = 0;
+        let indexRange: number[] = [];
         switch (xMode.value) {
-            case 'tan': X_MAX_BUFFER[0] = val;
-                X_MAX_BUFFER[1] = Math.atan(val) / Math.PI * 180;
-                if (dataSnapshot.value!.wavelength) {
-                    let lambda = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
-                    X_MAX_BUFFER[2] = 2 * Math.PI * val / lambda * 1000;
-                }
-                max = Math.round((val - tanMin.value) / (tanMax.value - tanMin.value) * (dataSnapshot.value!.height - 1));
+            case 'tan': INPUT_RANGE_X.maxTan = val;
+                indexRange = INPUT_RANGE_X.indexRangeOfTanIn(GLOBAL_RANGE_X.value, dataSnapshot.value!.height - 1)
                 break;
-            case 'angle': X_MAX_BUFFER[1] = val;
-                X_MAX_BUFFER[0] = Math.tan(val * Math.PI / 180);
-                if (dataSnapshot.value!.wavelength) {
-                    let lambda = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
-                    X_MAX_BUFFER[2] = 2 * Math.PI * X_MAX_BUFFER[0] / lambda * 1000;
-                }
-                let minAngle = Math.atan(tanMin.value) / Math.PI * 180;
-                let maxAngle = Math.atan(tanMax.value) / Math.PI * 180;
-                max = Math.round((val - minAngle) / (maxAngle - minAngle) * (dataSnapshot.value!.height - 1));
+            case 'angle': INPUT_RANGE_X.maxAngle = val;
+                indexRange = INPUT_RANGE_X.indexRangeOfAngleIn(GLOBAL_RANGE_X.value, dataSnapshot.value!.height - 1)
                 break;
-            case 'k': X_MAX_BUFFER[2] = val;
-                let lambda = dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
-                X_MAX_BUFFER[0] = val * lambda / (1000 * 2 * Math.PI);
-                X_MAX_BUFFER[1] = Math.atan(X_MAX_BUFFER[0]) / Math.PI * 180;
-                let minK = 2 * Math.PI * tanMin.value / lambda * 1000;
-                let maxK = 2 * Math.PI * tanMax.value / lambda * 1000;
-                max = Math.round((val - minK) / (maxK - minK) * (dataSnapshot.value!.height - 1));
+            case 'k': INPUT_RANGE_X.maxK = val;
+                indexRange = INPUT_RANGE_X.indexRangeOfKIn(GLOBAL_RANGE_X.value, dataSnapshot.value!.height - 1)
                 break;
         }
+
         chart1.dispatchAction({
             type: 'dataZoom',
             batch: [{
                 dataZoomIndex: 0,
-                endValue: max,
+                endValue: indexRange[1],
             }, {
                 dataZoomIndex: 5,
                 endValue: val,
             }]
         });
-        X_INDEX_RANGE[1] = max;
     }
 });
 
 const eVMode = ref(false);
 var EV_MODE = false;
-var NM_BUFFER = [0, 0];
-var EV_BUFFER = [0, 0];
+var INPUT_RANGE_Y = reactive<YRange>(new YRange([400, 1000]));
+var GLOBAL_RANGE_Y: YRange;
 const yMinInput = computed({
-    get: () => { if (prop.data) { return eVMode.value ? EV_BUFFER[0] : NM_BUFFER[0]}},
+    get: () => { if (prop.data) { return eVMode.value ? INPUT_RANGE_Y.minEnergy : INPUT_RANGE_Y.minLambda}},
     set: (val: number) => {
         let dzi = 3;
+        let setValue = {};
         if (eVMode.value) {
-            EV_BUFFER[0] = val;
-            NM_BUFFER[1] = CONST_1240 / val;
-            let max = CONST_1240 / dataSnapshot.value!.wavelength![0];
-            let min = CONST_1240 / dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
-            chart1.dispatchAction({
-                type: 'dataZoom',
-                dataZoomIndex: 1,
-                endValue: Math.round((max - val) / (max - min) * (dataSnapshot.value!.width - 1)),
-            });
-            Y_INDEX_RANGE[1] = Math.round((max - val) / (max - min) * (prop.data!.width - 1));
+            INPUT_RANGE_Y.minEnergy = val;
+
+            let indexRange = INPUT_RANGE_Y.indexRangeOfEnergyIn(GLOBAL_RANGE_Y, dataSnapshot.value!.width - 1)
+            setValue = { endValue: indexRange[1] };
+
             dzi = 4;
         } else {
-            NM_BUFFER[0] = val;
+            INPUT_RANGE_Y.minLambda = val;
             if (dataSnapshot.value!.wavelength) {
-                EV_BUFFER[1] = CONST_1240 / val;
-                let min = dataSnapshot.value!.wavelength[0];
-                let max = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
-                chart1.dispatchAction({
-                    type: 'dataZoom',
-                    dataZoomIndex: 1,
-                    startValue: Math.round((val - min) / (max - min) * (dataSnapshot.value!.width - 1)),
-                });
-                Y_INDEX_RANGE[0] = Math.round((val - min) / (max - min) * (prop.data!.width - 1));
+                let indexRange = INPUT_RANGE_Y.indexRangeOfLambdaIn(GLOBAL_RANGE_Y, dataSnapshot.value!.width - 1)
+                setValue = { startValue: indexRange[0] };
             } else {
-                chart1.dispatchAction({
-                    type: 'dataZoom',
-                    dataZoomIndex: 1,
-                    startValue: Math.round(val / (prop.data!.width - 1) * (dataSnapshot.value!.width - 1)),
-                });
-                Y_INDEX_RANGE[0] = val;
+                setValue = { startValue: Math.round(val / (prop.data!.width - 1) * (dataSnapshot.value!.width - 1)) };
             }
-            
         }
         chart1.dispatchAction({
             type: 'dataZoom',
-            dataZoomIndex: dzi,
-            startValue: val,
+            batch: [{
+                dataZoomIndex: 1,
+                ...setValue
+            }, {
+                dataZoomIndex: dzi,
+                startValue: val,
+            }]
         });
     }
 });
 
 const yMaxInput = computed({
-    get: () => { if (prop.data) { return eVMode.value ? EV_BUFFER[1] : NM_BUFFER[1] } },
+    get: () => { if (prop.data) { return eVMode.value ? INPUT_RANGE_Y.maxEnergy : INPUT_RANGE_Y.maxLambda}},
     set: (val: number) => {
         let dzi = 3;
+        let setValue = {};
         if (eVMode.value) {
-            EV_BUFFER[1] = val;
-            NM_BUFFER[0] = CONST_1240 / val;
-            let max = CONST_1240 / dataSnapshot.value!.wavelength![0];
-            let min = CONST_1240 / dataSnapshot.value!.wavelength![dataSnapshot.value!.width - 1];
-            chart1.dispatchAction({
-                type: 'dataZoom',
-                dataZoomIndex: 1,
-                startValue: Math.round((max - val) / (max - min) * (dataSnapshot.value!.width - 1)),
-            });
-            Y_INDEX_RANGE[0] = Math.round((max - val) / (max - min) * (prop.data!.width - 1));
+            INPUT_RANGE_Y.maxEnergy = val;
+
+            let indexRange = INPUT_RANGE_Y.indexRangeOfEnergyIn(GLOBAL_RANGE_Y, dataSnapshot.value!.width - 1)
+            setValue = { startValue: indexRange[0] };
+
             dzi = 4;
         } else {
-            NM_BUFFER[1] = val;
+            INPUT_RANGE_Y.maxLambda = val;
             if (dataSnapshot.value!.wavelength) {
-                EV_BUFFER[0] = CONST_1240 / val;
-                let min = dataSnapshot.value!.wavelength[0];
-                let max = dataSnapshot.value!.wavelength[dataSnapshot.value!.width - 1];
-                chart1.dispatchAction({
-                    type: 'dataZoom',
-                    dataZoomIndex: 1,
-                    endValue: Math.round((val - min) / (max - min) * (dataSnapshot.value!.width - 1)),
-                });
-                Y_INDEX_RANGE[1] = Math.round((val - min) / (max - min) * (prop.data!.width - 1));
+                let indexRange = INPUT_RANGE_Y.indexRangeOfLambdaIn(GLOBAL_RANGE_Y, dataSnapshot.value!.width - 1)
+                setValue = { endValue: indexRange[1] };
             } else {
-                chart1.dispatchAction({
-                    type: 'dataZoom',
-                    dataZoomIndex: 1,
-                    endValue: Math.round(val / (prop.data!.width - 1) * (dataSnapshot.value!.width - 1)),
-                });
-                Y_INDEX_RANGE[1] = val;
+                setValue = { endValue: Math.round(val / (prop.data!.width - 1) * (dataSnapshot.value!.width - 1)) };
             }
-            
         }
         chart1.dispatchAction({
             type: 'dataZoom',
-            dataZoomIndex: dzi,
-            endValue: val,
+            batch: [{
+                dataZoomIndex: 1,
+                ...setValue
+            }, {
+                dataZoomIndex: dzi,
+                endValue: val,
+            }]
         });
     }
 });
-
-var Y_INDEX_RANGE = [0, 0];
 
 onMounted(() => {
     chart1 = echarts.init(arspc.value! as HTMLDivElement);
@@ -257,11 +203,10 @@ onMounted(() => {
 })
 
 watch(() => prop.data, (newData, oldData) => {
-    if (newData && newData.wavelength) {
-        NM_BUFFER = [newData!.wavelength[0], newData!.wavelength[newData!.width - 1]];
-        EV_BUFFER = [CONST_1240 / NM_BUFFER[1], CONST_1240 / NM_BUFFER[0]];
-    } else if (newData) {
-        NM_BUFFER = [0, newData!.width - 1];
+    if (newData && !oldData) {
+        let wavelength = newData.wavelength ? newData.wavelength : [0, newData.width - 1]
+        GLOBAL_RANGE_Y = new YRange(wavelength);
+        INPUT_RANGE_Y = reactive(new YRange(wavelength));
     }
     nextTick(() => {
         if (newData) {
@@ -283,23 +228,50 @@ watch(() => prop.data, (newData, oldData) => {
                     eVMode: eVMode.value, xMode: xMode.value,
                     yMin: 0, yMax: prop.data!.width - 1,
                     xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
-                    xMin: tanMin.value, xMax: tanMax.value,
+                    xMin: GLOBAL_RANGE_X.value.minTan, xMax: GLOBAL_RANGE_X.value.maxTan,
                 });
+                let indexRangeY = EV_MODE ?
+                INPUT_RANGE_Y.indexRangeOfEnergyIn(GLOBAL_RANGE_Y, dataSnapshot.value!.width - 1) :
+                INPUT_RANGE_Y.indexRangeOfLambdaIn(GLOBAL_RANGE_Y, dataSnapshot.value!.width - 1)
+                let dataZoomBatch = [{
+                    dataZoomIndex: 1,
+                    startValue: indexRangeY[0],
+                    endValue: indexRangeY[1]
+                }, {
+                    dataZoomIndex: EV_MODE ? 4 : 3,
+                    startValue: yMinInput.value,
+                    endValue: yMaxInput.value,
+                }];
                 if (bindingLock.value) {
-                    chart1.dispatchAction({
-                        type: 'dataZoom',
+                    let indexRangeX: number[] = [];
+                    switch (xMode.value) {
+                        case 'tan': indexRangeX = INPUT_RANGE_X.indexRangeOfTanIn(GLOBAL_RANGE_X.value, dataSnapshot.value!.height - 1)
+                            break;
+                        case 'angle': indexRangeX = INPUT_RANGE_X.indexRangeOfAngleIn(GLOBAL_RANGE_X.value, dataSnapshot.value!.height - 1)
+                            break;
+                        case 'k': indexRangeX = INPUT_RANGE_X.indexRangeOfKIn(GLOBAL_RANGE_X.value, dataSnapshot.value!.height - 1)
+                            break;
+                    }
+                    dataZoomBatch.push({
+                        dataZoomIndex: 0,
+                        startValue: indexRangeX[0],
+                        endValue: indexRangeX[1],
+                    }, {
                         dataZoomIndex: 5,
                         startValue: xMinInput.value,
                         endValue: xMaxInput.value,
-                    })
+                    });
                 } else {
-                    chart1.dispatchAction({
-                        type: 'dataZoom',
+                    dataZoomBatch.push({
                         dataZoomIndex: 0,
-                        startValue: X_SNAPSHOT_INDEX_RANGE[0],
-                        endValue: X_SNAPSHOT_INDEX_RANGE[1],
+                        startValue: Math.round(xMinIndex.value * (dataSnapshot.value!.height - 1) / (prop.data!.height - 1)),
+                        endValue: Math.round(xMaxIndex.value * (dataSnapshot.value!.height - 1) / (prop.data!.height - 1)),
                     });
                 }
+                chart1.dispatchAction({
+                    type: 'dataZoom',
+                    batch: dataZoomBatch
+                });
             } else {
                 AXES_CHANGE_LOCK = true;
                 let info = compatible(newData, oldData, xMinIndex.value, xMaxIndex.value, yMinInput.value!, yMaxInput.value!);
@@ -325,7 +297,7 @@ watch(() => prop.data, (newData, oldData) => {
                         eVMode: eVMode.value, xMode: xMode.value,
                         yMin: 0, yMax: prop.data!.width - 1,
                         xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
-                        xMin: tanMin.value, xMax: tanMax.value
+                        xMin: GLOBAL_RANGE_X.value.minTan, xMax: GLOBAL_RANGE_X.value.maxTan
                     });
                 }
                 AXES_CHANGE_LOCK = false;
@@ -340,27 +312,15 @@ watch(frameIndex, newIndex => {
         eVMode: eVMode.value, xMode: bindingLock.value ? xMode.value : '',
         yMin: 0, yMax: prop.data!.width - 1,
         xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
-        xMin: tanMin.value, xMax: tanMax.value
+        xMin: GLOBAL_RANGE_X.value.minTan, xMax: GLOBAL_RANGE_X.value.maxTan
     });
 })
-
-const inputNA = ref();
-const tanMin = computed(() => {
-    let tan = Math.tan(Math.asin(inputNA.value));
-    let a = xMaxIndex.value - xMinIndex.value;
-    return -tan - xMinIndex.value / a * 2 * tan;
-});
-const tanMax = computed(() => {
-    let tan = Math.tan(Math.asin(inputNA.value));
-    let a = xMaxIndex.value - xMinIndex.value;
-    return tan + (prop.data!.height - 1 - xMaxIndex.value) / a * 2 * tan;
-});
 
 watch(bindingLock, locked => {
     let tan = Math.tan(Math.asin(inputNA.value));
     if (locked) {
-        xMinInput.value = -tan;
-        xMaxInput.value = tan;
+        let lambda = prop.data!.wavelength ? prop.data!.wavelength[prop.data!.width - 1] : prop.data!.width - 1;
+        INPUT_RANGE_X = reactive(new XRange(inputNA.value, lambda))
     } else {
         xMode.value = 'tan';
     }
@@ -375,9 +335,7 @@ watch(bindingLock, locked => {
 })
 
 watch(xMinIndex, newIndex => {
-    X_INDEX_RANGE[0] = newIndex;
     let min = Math.round(newIndex / (prop.data!.height - 1) * (dataSnapshot.value!.height - 1));
-    X_SNAPSHOT_INDEX_RANGE[0] = min;
     chart1.dispatchAction({
         type: 'dataZoom',
         batch: [{
@@ -391,9 +349,7 @@ watch(xMinIndex, newIndex => {
 });
 
 watch(xMaxIndex, newIndex => {
-    X_INDEX_RANGE[1] = newIndex;
     let max = Math.round(newIndex / (prop.data!.height - 1) * (dataSnapshot.value!.height - 1));
-    X_SNAPSHOT_INDEX_RANGE[1] = max;
     chart1.dispatchAction({
         type: 'dataZoom',
         batch: [{
@@ -410,7 +366,7 @@ var AXES_CHANGE_LOCK = false;
 
 function axesChanged() {
     if (bindingLock.value) {
-        emit('stretch', eVMode.value, xMode.value, tanMin.value, tanMax.value);
+        emit('stretch', eVMode.value, xMode.value, GLOBAL_RANGE_X.value.minTan, GLOBAL_RANGE_X.value.maxTan);
     } else {
         emit('stretch', eVMode.value, xMode.value, 0, prop.data!.height - 1);
     }
@@ -493,24 +449,37 @@ function copyToClipboard() {
     }
     str = `${ xName }\t${ yName }\tcounts\n${ xUnit }\t${ yUnit }\n\n`;
 
+    let indexRangeX: number[] = [];
     if (bindingLock.value) {
-        let height = X_INDEX_RANGE[1] - X_INDEX_RANGE[0];
+        switch (xMode.value) {
+            case 'tan': indexRangeX = INPUT_RANGE_X.indexRangeOfTanIn(GLOBAL_RANGE_X.value, prop.data.height - 1)
+                break;
+            case 'angle': indexRangeX = INPUT_RANGE_X.indexRangeOfAngleIn(GLOBAL_RANGE_X.value, prop.data.height - 1)
+                break;
+            case 'k': indexRangeX = INPUT_RANGE_X.indexRangeOfKIn(GLOBAL_RANGE_X.value, prop.data.height - 1)
+                break;
+        }
+        let height = indexRangeX[1] - indexRangeX[0];
         let d = (xMaxInput.value! - xMinInput.value!) / (height - 1);
         for (var a = 0; a <= height; a++) {
             str += `\t${xMinInput.value! + a * d}`;
         }
     } else {
-        for (var b = X_INDEX_RANGE[0]; b <= X_INDEX_RANGE[1]; b++) {
+        indexRangeX = [xMinIndex.value, xMaxIndex.value]
+        for (var b = xMinIndex.value; b <= xMaxIndex.value; b++) {
             str += `\t${b}`;
         }
     }
     str += '\n';
     
-    for (var i = Y_INDEX_RANGE[0]; i <= Y_INDEX_RANGE[1]; i++) {
+    let indexRangeY = EV_MODE ?
+    INPUT_RANGE_Y.indexRangeOfEnergyIn(GLOBAL_RANGE_Y, prop.data!.width - 1) :
+    INPUT_RANGE_Y.indexRangeOfLambdaIn(GLOBAL_RANGE_Y, prop.data!.width - 1);
+    for (var i = indexRangeY[0]; i <= indexRangeY[1]; i++) {
         if (prop.data!.wavelength) {
-            str += `${eVMode.value ? (CONST_1240 / prop.data!.wavelength[i]) : prop.data!.wavelength[i]}`;
+            str += `${EV_MODE ? (CONST_1240 / prop.data!.wavelength[i]) : prop.data!.wavelength[i]}`;
         }
-        for (var j = X_INDEX_RANGE[0]; j <= X_INDEX_RANGE[1]; j++) {
+        for (var j = indexRangeX[0]; j <= indexRangeX[1]; j++) {
             str += `\t${prop.data!.frame[frameIndex.value][j * prop.data!.width + i]}`;
         }
         str += '\n';
