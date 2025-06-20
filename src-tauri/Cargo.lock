@@ -135,7 +135,7 @@ dependencies = [
 
 [[package]]
 name = "arspeviewer"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "itertools 0.14.0",
  "ndarray",

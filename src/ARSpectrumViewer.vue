@@ -203,10 +203,12 @@ onMounted(() => {
 })
 
 watch(() => prop.data, (newData, oldData) => {
-    if (newData && !oldData) {
+    if (newData) {
         let wavelength = newData.wavelength ? newData.wavelength : [0, newData.width - 1]
         GLOBAL_RANGE_Y = new YRange(wavelength);
-        INPUT_RANGE_Y = reactive(new YRange(wavelength));
+        if (!oldData) {
+            INPUT_RANGE_Y = reactive(new YRange(wavelength));
+        }
     }
     nextTick(() => {
         if (newData) {
@@ -285,11 +287,11 @@ watch(() => prop.data, (newData, oldData) => {
                 if (!info.yCompate && info.xCompate && xMode.value == 'k') {
                     xMode.value = 'tan';
                 }
-                yMinInput.value = eVMode.value ? CONST_1240 / info.yMax : info.yMin;
-                yMaxInput.value = eVMode.value ? CONST_1240 / info.yMin : info.yMax;
                 xMinIndex.value = info.xMinIndex;
                 xMaxIndex.value = info.xMaxIndex;
                 if (eVMode.value || xMode.value != 'tan') {
+                    INPUT_RANGE_Y.minLambda = info.yMin;
+                    INPUT_RANGE_Y.maxLambda = info.yMax;
                     axesChanged();
                 } else {
                     drawARSpec(chart1, dataSnapshot.value!, {
@@ -299,6 +301,8 @@ watch(() => prop.data, (newData, oldData) => {
                         xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
                         xMin: GLOBAL_RANGE_X.value.minTan, xMax: GLOBAL_RANGE_X.value.maxTan
                     });
+                    yMinInput.value = eVMode.value ? CONST_1240 / info.yMax : info.yMin;
+                    yMaxInput.value = eVMode.value ? CONST_1240 / info.yMin : info.yMax;
                 }
                 AXES_CHANGE_LOCK = false;
             }
