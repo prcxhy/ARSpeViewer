@@ -17,6 +17,7 @@ const prop = defineProps<{
     name: string
     path: string
     newlyOpen: boolean
+    hightlightIndex: number
 }>()
 
 const frameIndex = defineModel<number>({ default: 0 });
@@ -318,6 +319,29 @@ watch(frameIndex, newIndex => {
         xMinIndex: 0, xMaxIndex: prop.data!.height - 1,
         xMin: GLOBAL_RANGE_X.value.minTan, xMax: GLOBAL_RANGE_X.value.maxTan
     });
+})
+
+watch(() => prop.hightlightIndex, (newIndex, oldIndex) => {
+    let height = dataSnapshot.value!.height;
+    let snapshotIndexNew = Math.round(newIndex / (prop.data!.height - 1) * (height - 1));
+    let snapshotIndexOld = Math.round(oldIndex / (prop.data!.height - 1) * (height - 1));
+    let newRange = Array.from({ length: dataSnapshot.value!.width }, (_, i) => snapshotIndexNew + i * height);
+    let oldRange = Array.from({ length: dataSnapshot.value!.width }, (_, i) => snapshotIndexOld + i * height);
+    chart1!.dispatchAction({
+        type: 'highlight',
+        seriesIndex: 0,
+        dataIndex: newRange
+    })
+    chart1!.dispatchAction({
+        type: 'downplay',
+        seriesIndex: 0,
+        dataIndex: oldRange
+    })
+    setTimeout(() => chart1!.dispatchAction({
+        type: 'downplay',
+        seriesIndex: 0,
+        dataIndex: newRange
+    }), 1000);
 })
 
 watch(bindingLock, locked => {
