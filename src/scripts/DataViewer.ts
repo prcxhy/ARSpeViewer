@@ -142,8 +142,12 @@ function initARSpec(
                 min: info.xMin,
                 max: info.xMax,
                 nameLocation: 'center', nameGap: 28,
-                name: "tan(θ)", nameTextStyle: {
-                    color: "#000", fontFamily: 'Times New Roman', fontSize: 16
+                name: "tan({i|θ})", nameTextStyle: {
+                    color: "#000", fontFamily: 'Times New Roman', fontSize: 16,
+                    rich: {
+                        i: { fontStyle: 'italic', fontFamily: 'Times New Roman', fontSize: 18 },
+                        s: { verticalAlign: 'super', fontFamily: 'Times New Roman', fontSize: 'smaller' }
+                    }
                 },
                 axisTick: {
                     show: true, color: "#000"
@@ -314,7 +318,7 @@ async function drawARSpec(
         }
     }
 
-    let xName = 'tan(θ)';
+    let xName = 'tan({i|θ})';
     let xMin = 0;
     let xMax = xLength - 1;
 
@@ -323,11 +327,11 @@ async function drawARSpec(
             case 'tan': xMin = info.xMin;
                 xMax = info.xMax;
                 break;
-            case 'angle': xName = 'θ (°)';
+            case 'angle': xName = '{i|θ} (°)';
                 xMin = Math.atan(info.xMin) / Math.PI * 180;
                 xMax = Math.atan(info.xMax) / Math.PI * 180;
                 break;
-            case 'k': xName = 'k (μm⁻¹)';
+            case 'k': xName = '{i|k} (μm{s|−1})';
                 xMin = 2 * Math.PI * info.xMin / yData![yLength - 1] * 1000;
                 xMax = 2 * Math.PI * info.xMax / yData![yLength - 1] * 1000;
                 break;
