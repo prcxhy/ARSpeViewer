@@ -1,4 +1,4 @@
-use quick_xml::{events::Event, name::QName, reader::Reader};
+use quick_xml::{escape::unescape, events::Event, reader::Reader};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
@@ -121,11 +121,11 @@ fn parse_spe(data_vec: Vec<u8>) -> String {
         loop {
             match reader.read_event() {
                 Ok(Event::Start(e)) => match e.name().as_ref() {
-                    b"Wavelength" => {
-                        if e.try_get_attribute(QName(b"type")).unwrap().is_none() {
+                    "Wavelength" => {
+                        if e.try_get_attribute("type").unwrap().is_none() {
                             if let Event::Text(text) = reader.read_event().unwrap() {
                                 let mut wavelength: Vec<f64> = Vec::new();
-                                text.unescape()
+                                unescape(&text)
                                     .unwrap()
                                     .split(',')
                                     .for_each(|val| wavelength.push(val.parse::<f64>().unwrap()));
@@ -133,19 +133,19 @@ fn parse_spe(data_vec: Vec<u8>) -> String {
                             }
                         }
                     }
-                    b"DetectorAngle" => {
+                    "DetectorAngle" => {
                         if let Event::Text(text) = reader.read_event().unwrap() {
-                            detector_angle.push(text.unescape().unwrap().parse::<f64>().unwrap());
+                            detector_angle.push(unescape(&text).unwrap().parse::<f64>().unwrap());
                         }
                     }
-                    b"FocalLength" => {
+                    "FocalLength" => {
                         if let Event::Text(text) = reader.read_event().unwrap() {
-                            focal_length.push(text.unescape().unwrap().parse::<f64>().unwrap());
+                            focal_length.push(unescape(&text).unwrap().parse::<f64>().unwrap());
                         }
                     }
-                    b"InclusionAngle" => {
+                    "InclusionAngle" => {
                         if let Event::Text(text) = reader.read_event().unwrap() {
-                            inclusion_angle.push(text.unescape().unwrap().parse::<f64>().unwrap());
+                            inclusion_angle.push(unescape(&text).unwrap().parse::<f64>().unwrap());
                         }
                     }
                     _ => (),

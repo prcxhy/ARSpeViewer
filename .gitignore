@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Session artifacts (conversation reports, plans, issues)
+.session

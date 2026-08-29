@@ -1,7 +1,7 @@
 use crate::data_extract::SpeData;
 use ndarray::Array;
 use ninterp::{
-    prelude::{Extrapolate, Interp2D, Interpolator},
+    prelude::{Extrapolate, Interp2D},
     strategy,
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -53,16 +53,16 @@ pub fn stretch(
         _ => Array::linspace(tan_min, tan_max, height).into_iter(),
     };
 
-    let mut points: Vec<Vec<f64>> = Vec::new();
+    let mut points: Vec<[f64; 2]> = Vec::new();
 
     for x in x_iter {
         for y in y_iter.iter() {
             match x_mode.as_str() {
                 "k" => {
-                    points.push(vec![x * y, *y]);
+                    points.push([x * y, *y]);
                 }
                 _ => {
-                    points.push(vec![x, *y]);
+                    points.push([x, *y]);
                 }
             }
         }
@@ -85,7 +85,7 @@ pub fn stretch(
 
             points
                 .par_iter()
-                .map(|point: &Vec<f64>| interp.interpolate(&point).unwrap())
+                .map(|point: &[f64; 2]| interp.interpolate(point).unwrap())
                 .collect::<Vec<f64>>()
         })
         .collect::<Vec<Vec<f64>>>();
