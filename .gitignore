@@ -33,6 +33,6 @@ dist-ssr
 .venv
 
 # Python extension artifacts staged locally (release CI fills these)
-resources/py-interface/*.pyd
-resources/py-interface/*.so
-resources/py-interface/*.dll
+src-tauri/resources/py-interface/*.pyd
+src-tauri/resources/py-interface/*.so
+src-tauri/resources/py-interface/*.dll
