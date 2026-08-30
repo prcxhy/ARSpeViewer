@@ -71,7 +71,7 @@ jobs:
           mkdir -p src-tauri/resources/py-interface
           case "${{ matrix.platform }}" in
             windows*) cp target/release/arspe_py.dll src-tauri/resources/py-interface/arspe_py.pyd ;;
-            macos*)   cp target/release/arspe_py.dylib src-tauri/resources/py-interface/arspe_py.so ;;
+            macos*)   cp target/release/libarspe_py.dylib src-tauri/resources/py-interface/arspe_py.so ;;
           esac
           cp crates/arspe-py/arspe_py.pyi src-tauri/resources/py-interface/
 
