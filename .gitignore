@@ -36,3 +36,6 @@ dist-ssr
 src-tauri/resources/py-interface/*.pyd
 src-tauri/resources/py-interface/*.so
 src-tauri/resources/py-interface/*.dll
+
+# Python bytecode
+crates/arspe-py/tests/__pycache__/
