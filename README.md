@@ -37,5 +37,32 @@
    ```
 3. 即可正常启动ARSpeViewer
 
+## Python 接口（面向自动化脚本 / Agent）
+
+核心数据提取与换算能力（文件解析、波长↔能量、tanθ↔角度↔波矢、坐标轴拉伸）已封装为
+Python 扩展包 `arspe-py`（导入名 `arspe_py`），与桌面版共用同一份 Rust 核心代码，数据
+口径完全一致，可无 GUI 运行：
+
+```python
+import arspe_py as arspe
+
+spe = arspe.open_file("run01.spe")     # 也支持 parse_spe(bytes) / parse_text(str)
+print(spe.frames.shape)                # (帧数, 角度行数, 波长列数) 的 numpy 数组
+
+st = arspe.stretch(spe, ev_mode=True, x_mode="k", tan_min=-0.3, tan_max=0.3)
+print(arspe.lambda_to_energy(532.0))   # 2.3305... eV
+st.save_csv("run01_ev_k.csv")          # 制表符分隔，可直接粘贴到 Origin / Excel
+```
+
+当前需从源码构建（Python ≥ 3.10，需 Rust 工具链）：
+
+```shell
+pip install numpy maturin
+cd crates/arspe-py && maturin develop --release
+```
+
+完整的 API 说明、数据布局语义与面向 Agent 的使用指南见
+[docs/python-api.md](./docs/python-api.md)。
+
 ## License
 GPL-3.0 License. See [License here](./LICENSE) for details.
