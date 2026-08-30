@@ -25,3 +25,9 @@ dist-ssr
 
 # Session artifacts (conversation reports, plans, issues)
 .session
+
+# Rust workspace build dir
+/target
+
+# Python venv
+.venv

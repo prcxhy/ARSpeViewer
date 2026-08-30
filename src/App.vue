@@ -115,6 +115,8 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
         tanMax: tanMax
     }).then(newData => {
       speDataShow.value = JSON.parse(newData as string);
+    }).catch((msg) => {
+      showMessage(msg as string, 'error');
     });
   }
 }
