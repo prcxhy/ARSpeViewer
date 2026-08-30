@@ -7,6 +7,23 @@ GUI 完全一致，并由三方对拍测试锁定（`.session/py-parity.py`）�
 
 面向场景：无 GUI 的自动化工具流、批处理脚本、LLM Agent 编排。
 
+## 随应用安装使用（无需 clone 仓库）
+
+自 v1.2.0 起，release 安装包内置扩展模块（abi3，Python 3.10–3.13+ 通用）：
+
+- Windows：`<安装目录>\py-interface\`（默认 `C:\Program Files\arspeviewer\py-interface`）
+- macOS：`/Applications/arspeviewer.app/Contents/Resources/py-interface`
+
+前置：Python ≥ 3.10 与 numpy（`pip install numpy`）。用法：
+
+```python
+import sys
+sys.path.append(r"C:\Program Files\arspeviewer\py-interface")   # 按平台调整
+import arspe_py
+```
+
+适合只装了应用的最终用户；本仓库的开发/实验流程仍建议用下面的源码构建。
+
 ## 环境构建
 
 依赖：Python ≥ 3.10（abi3，无需按版本分别编译）、numpy ≥ 1.26、Rust 工具链。

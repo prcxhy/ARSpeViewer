@@ -54,7 +54,10 @@ print(arspe.lambda_to_energy(532.0))   # 2.3305... eV
 st.save_csv("run01_ev_k.csv")          # 制表符分隔，可直接粘贴到 Origin / Excel
 ```
 
-当前需从源码构建（Python ≥ 3.10，需 Rust 工具链）：
+自 v1.2.0 起，**release 安装包内置接口文件**（`py-interface/` 目录，abi3，Python
+3.10+ 通用），安装应用后无需 clone 仓库即可使用，详见
+[docs/python-api.md](./docs/python-api.md)。开发调试可从源码构建（Python ≥ 3.10，
+需 Rust 工具链）：
 
 ```shell
 pip install numpy maturin
