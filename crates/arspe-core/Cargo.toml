@@ -1,0 +1,18 @@
+[package]
+name = "arspe-core"
+version = "1.2.0"
+edition = "2021"
+description = "ARSpeViewer core: spectral data extraction, axis conversion and interpolation stretch"
+license = "GPL-3.0"
+publish = false
+
+[dependencies]
+serde = { workspace = true }
+quick-xml = { workspace = true }
+rayon = { workspace = true }
+ndarray = { workspace = true }
+ninterp = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

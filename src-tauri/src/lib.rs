@@ -1,9 +1,8 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-mod data_extract;
-mod heatmap_stretch;
+// 数据处理逻辑位于 arspe-core，此层只做 Tauri 命令与 JSON 序列化的薄封装。
+mod commands;
 
-use data_extract::*;
-use heatmap_stretch::*;
+use commands::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

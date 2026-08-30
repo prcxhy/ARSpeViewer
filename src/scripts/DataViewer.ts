@@ -450,7 +450,7 @@ async function drawSpec(chart: ECharts, speData: SpeData, frameIndex: number, sl
     }
 }
 
-async function saveImage(chart: echarts.ECharts, name: string, isntDrawn: boolean, silentPath: string | undefined) {
+async function saveImage(chart: ECharts, name: string, isntDrawn: boolean, silentPath: string | undefined) {
     if (isntDrawn) { return }
     let savePath = silentPath ? await path.join(silentPath, `${name}.png`) : await save({
         defaultPath: name,

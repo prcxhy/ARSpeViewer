@@ -115,6 +115,8 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
         tanMax: tanMax
     }).then(newData => {
       speDataShow.value = JSON.parse(newData as string);
+    }).catch((msg) => {
+      showMessage(msg as string, 'error');
     });
   }
 }
@@ -137,7 +139,7 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
   <div id="content" @dragover.prevent="" @drop="dropToOpen">
     <ARSpectrumViewer :data="speDataShow" :name="fileName" :path="workingPath" :newly-open="newlyOpen"
       :hightlight-index="sliceIndex" v-model="frameIndex" @show-message="showMessage"
-      @slice-at-index="index => sliceIndex = index" @stretch="stretch" />
+      @slice-at-index="(index: number) => sliceIndex = index" @stretch="stretch" />
     <SpectrumViewer :data="speDataShow" :name="fileName" :frame-index="frameIndex" v-model="sliceIndex"
       @show-message="showMessage" />
   </div>
