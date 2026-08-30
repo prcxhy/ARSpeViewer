@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/arspe-core", "src-tauri"]
+members = ["crates/arspe-core", "crates/arspe-py", "src-tauri"]
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

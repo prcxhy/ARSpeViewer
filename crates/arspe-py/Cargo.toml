@@ -1,0 +1,17 @@
+[package]
+name = "arspe-py"
+version = "1.2.0"
+edition = "2021"
+description = "Python bindings for ARSpeViewer core (spectral data extraction & axis conversion)"
+license = "GPL-3.0"
+publish = false
+
+[lib]
+name = "arspe_py"
+crate-type = ["cdylib"]
+
+[dependencies]
+arspe-core = { path = "../arspe-core" }
+pyo3 = { version = "0.29", features = ["extension-module", "abi3-py310"] }
+numpy = "0.29"
+serde_json = { workspace = true }
