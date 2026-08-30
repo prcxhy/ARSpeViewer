@@ -22,3 +22,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Session artifacts (conversation reports, plans, issues)
+.session
+
+# Rust workspace build dir
+/target
+
+# Python venv
+.venv
+
+# Python extension artifacts staged locally (release CI fills these)
+resources/py-interface/*.pyd
+resources/py-interface/*.so
+resources/py-interface/*.dll
