@@ -48,11 +48,31 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: '.'
 
       - name: install frontend dependencies
         # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
         run: pnpm install
+
+      - name: setup python (for pyo3 build script)
+        if: hashFiles('crates/arspe-py/Cargo.toml') != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 构建 arspe_py 扩展并放入 bundle 资源目录（tauri.conf.json resources 会打进安装包）。
+      # crates/arspe-py 尚未合入 release 时 hashFiles 为空，本步骤自动跳过（本地构建仅含占位 README）。
+      - name: build python extension (arspe_py)
+        if: hashFiles('crates/arspe-py/Cargo.toml') != ''
+        shell: bash
+        run: |
+          cargo build --release -p arspe-py
+          mkdir -p resources/py-interface
+          case "${{ matrix.platform }}" in
+            windows*) cp target/release/arspe_py.dll resources/py-interface/arspe_py.pyd ;;
+            macos*)   cp target/release/arspe_py.dylib resources/py-interface/arspe_py.so ;;
+          esac
+          cp crates/arspe-py/arspe_py.pyi resources/py-interface/
 
       - uses: tauri-apps/tauri-action@v0
         env:

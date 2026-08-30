@@ -36,6 +36,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": {
+      "resources/py-interface/*": "py-interface/"
+    },
     "macOS": {
       "dmg": {
         "appPosition": {
