@@ -10,6 +10,9 @@ import { path } from "@tauri-apps/api";
 import SpectrumViewer from "./SpectrumViewer.vue";
 import { getMatches } from "@tauri-apps/plugin-cli";
 import { listen } from "@tauri-apps/api/event";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { resourceDir, join } from "@tauri-apps/api/path";
+import IconApi from "./assets/api.svg?component";
 
 const workingPath = ref("");
 
@@ -85,6 +88,27 @@ function silentlySaveImage() {
   silentFlag.value = undefined;
 }
 
+async function copyAgentPrompt() {
+  let dir = await resourceDir();
+  while (dir.endsWith("/") || dir.endsWith("\\")) {
+    dir = dir.slice(0, -1);
+  }
+  const skillPath = await join(dir, "skill", "SKILL.md");
+  const prompt = [
+    "我已安装 ARSpeViewer（角分辨光谱浏览器），它自带面向 Agent 的 Python 数据接口技能。请按以下步骤完成接入：",
+    `1. 读取 "${skillPath}"；`,
+    `2. 将文件中所有 <ARSPEVIEWER_INSTALL_DIR> 占位符替换为 "${dir}"；`,
+    "3. 将修改后的内容安装为你的技能（保存到你的技能目录，如 ~/.agents/skills/arspe-viewer/SKILL.md，或按你所用的技能安装机制处理）；",
+    "4. 安装完成后，我后续提到光谱数据处理需求时请优先使用该技能中的接口。",
+  ].join("\n");
+  try {
+    await writeText(prompt);
+    showMessage('接入提示词已复制，请粘贴给你的 AI Agent 完成安装', 'ok');
+  } catch (e) {
+    showMessage(String(e), 'error');
+  }
+}
+
 onMounted(async () => {
   let source = (await getMatches()).args.source.value;
   if (typeof source == 'string') {
@@ -129,6 +153,9 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
     </button>
     <button @click="silentlySaveImage" title="一键导出图片">
       <IconExport />
+    </button>
+    <button @click="copyAgentPrompt" title="Agent 接入：复制提示词，让 AI Agent 安装随包的数据接口技能">
+      <IconApi />
     </button>
   </nav>
   <Teleport to="body">

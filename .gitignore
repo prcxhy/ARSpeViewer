@@ -37,5 +37,8 @@ src-tauri/resources/py-interface/*.pyd
 src-tauri/resources/py-interface/*.so
 src-tauri/resources/py-interface/*.dll
 
+# agent skill file staged by release CI (single source: .agents/skills/arspe-viewer/SKILL.md)
+src-tauri/resources/skill/SKILL.md
+
 # Python bytecode
 crates/arspe-py/tests/__pycache__/
