@@ -108,7 +108,7 @@ async function copyAgentPrompt() {
   ].join("\n");
   try {
     await writeText(prompt);
-    showMessage('接入提示词已复制，请粘贴给你的 AI Agent 完成安装', 'ok');
+    showMessage('已复制提示词，请粘贴到你的 Agent 对话中完成接入', 'ok');
   } catch (e) {
     showMessage(String(e), 'error');
   }
@@ -260,7 +260,7 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
     <button @click="silentlySaveImage" title="一键导出图片">
       <IconExport />
     </button>
-    <button @click="copyAgentPrompt" title="Agent 接入：复制提示词，让 AI Agent 安装随包的数据接口技能">
+    <button style="grid-row: 4 / 5;" @click="copyAgentPrompt" title="Agent 接入：复制提示词，让 AI Agent 安装随包的数据接口技能">
       <IconApi />
     </button>
     <button class="about-button" @click="openAbout" title="关于 ARSpeViewer">
@@ -280,12 +280,6 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
           <button class="about-close" @click="aboutOpen = false" title="关闭">✕</button>
           <h2>ARSpeViewer <small>v{{ appVersion }}</small></h2>
           <p class="about-desc">角分辨光谱浏览器（Angle-Resolved Spectral Viewer）</p>
-          <p class="about-links">
-            <button class="link" @click="openUrl(REPO_URL)"><IconGithub />仓库</button>
-            <button class="link" @click="openUrl(ISSUES_URL)"><IconGithub />Issues</button>
-            <button class="link" @click="openUrl(RELEASES_URL)"><IconGithub />Releases</button>
-            <span>GPL-3.0 License</span>
-          </p>
           <div class="about-update">
             <p v-if="hasUpdate" class="update-line">
               <IconUpdate />
@@ -295,6 +289,11 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
             <p v-else-if="!checkFailed">已是最新版本</p>
             <p v-else>未能检测更新（可能离线或达到 GitHub API 限额，稍后自动重试）</p>
           </div>
+          <p class="about-links">
+            <button class="link" @click="openUrl(REPO_URL)"><IconGithub />仓库</button>
+            <button class="link" @click="openUrl(ISSUES_URL)"><IconGithub />Issues</button>
+            <span style="color: #666;">GPL-3.0 License</span>
+          </p>
           <h3>开源致谢</h3>
           <div class="about-thanks">
             <p v-for="g in THANKS" :key="g.group">
@@ -302,7 +301,7 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
               <button v-for="[name, url] in g.items" :key="name" class="link"
                 @click="openUrl(url)">{{ name }}</button>
             </p>
-            <p>以及所有间接依赖的开源项目。</p>
+            <p style="color: #666;">以及所有间接依赖的开源项目。</p>
           </div>
         </div>
       </div>
@@ -331,16 +330,17 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
 
 .about-button {
   position: relative;
+  grid-row: 5 / 6;
 }
 
 .update-badge {
   position: absolute;
-  top: 1mm;
-  right: 1mm;
+  top: 0mm;
+  right: 0mm;
   width: 2mm;
   height: 2mm;
   border-radius: 50%;
-  background-color: #2eaf64;
+  background-color: rgb(59, 209, 39);
 }
 
 .modal-enter-active,
@@ -365,16 +365,21 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
 
 .about-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2mm;
   min-width: 90mm;
   max-width: 120mm;
   padding: 6mm 8mm;
   border-radius: 2mm;
   background-color: #fff;
   box-shadow: 0 2mm 8mm rgba(0, 0, 0, 0.25);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .about-card h2 {
-  margin: 0 0 1mm;
+  margin: 0;
 }
 
 .about-card h2 small {
@@ -383,21 +388,25 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
   color: #666;
 }
 
+.about-card h3 {
+  padding: 0px;
+  color: black;
+}
+
 .about-close {
   position: absolute;
   top: 2mm;
   right: 2mm;
-  padding: 0 1mm;
-  border: none;
-  background: none;
+  width: 6mm;
+  height: 6mm;
   font-size: 4mm;
   color: #666;
   cursor: pointer;
+  transition: 0.2s;
 }
 
 .about-desc {
-  margin: 0 0 2mm;
-  color: #444;
+  color: #666;
 }
 
 .about-links {
@@ -405,7 +414,7 @@ function stretch(eVMode: boolean, xMode: string, tanMin: number, tanMax: number)
   flex-wrap: wrap;
   gap: 3mm;
   align-items: center;
-  margin: 0 0 3mm;
+  justify-content: center;
 }
 
 button.link {
@@ -417,7 +426,7 @@ button.link {
   background: none;
   color: #2f6fde;
   cursor: pointer;
-  font-size: 3.2mm;
+  font-size: 3.6mm;
 }
 
 button.link:hover {
@@ -426,15 +435,15 @@ button.link:hover {
 
 .about-links svg,
 .update-line svg {
-  width: 3.5mm;
-  height: 3.5mm;
+  width: 4mm;
+  height: 4mm;
 }
 
 .about-update {
-  margin: 0 0 3mm;
+  margin: 0;
   padding: 2mm 3mm;
   border-radius: 1mm;
-  background-color: var(--color-bg-7, #f3f3f3);
+  background-color: var(--color-bg-9, #f3f3f3);
 }
 
 .about-update p {
@@ -454,6 +463,8 @@ button.link:hover {
 }
 
 .about-thanks p {
-  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2mm;
 }
 </style>
