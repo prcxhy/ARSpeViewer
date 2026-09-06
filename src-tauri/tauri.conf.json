@@ -37,7 +37,8 @@
     "active": true,
     "targets": "all",
     "resources": {
-      "resources/py-interface/*": "py-interface/"
+      "resources/py-interface/*": "py-interface/",
+      "resources/skill/*": "skill/"
     },
     "macOS": {
       "dmg": {
