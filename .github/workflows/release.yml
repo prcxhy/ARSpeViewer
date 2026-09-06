@@ -75,6 +75,11 @@ jobs:
           esac
           cp crates/arspe-py/arspe_py.pyi src-tauri/resources/py-interface/
 
+      # Agent 技能文件随包分发（App「Agent 接入」按钮的提示词指向 <安装目录>\skill\SKILL.md）
+      - name: stage agent skill file
+        shell: bash
+        run: cp .agents/skills/arspe-viewer/SKILL.md src-tauri/resources/skill/SKILL.md
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
